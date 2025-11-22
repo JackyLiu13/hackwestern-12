@@ -1,5 +1,8 @@
 'use client';
 import React, { useState, useRef } from 'react';
+import { useAppStore } from '@/store/useAppStore';
+import { repairService } from '@/lib/api/repairService';
+import type { ApiError, RepairResponse } from '@/lib/api/types';
 import { 
   Wrench, 
   AlertTriangle, 
@@ -69,7 +72,7 @@ const ANALYSIS_TIMELINE = [
 
 // 1. Upload View - Implementation adapted from your page.tsx
 interface UploadViewProps {
-  onImageSelect: (imageData: string) => void;
+  onImageSelect: (imageData: string, file: File) => void;
 }
 
 const UploadView = ({ onImageSelect }: UploadViewProps) => {
@@ -81,7 +84,7 @@ const UploadView = ({ onImageSelect }: UploadViewProps) => {
       const reader = new FileReader();
       reader.onload = (e: ProgressEvent<FileReader>) => {
         if (e.target?.result && typeof e.target.result === 'string') {
-          onImageSelect(e.target.result);
+          onImageSelect(e.target.result, file);
         }
       };
       reader.readAsDataURL(file);
@@ -227,26 +230,22 @@ const AnalyzingView = ({ logs }: AnalyzingViewProps) => (
 );
 
 // 4. Guide View - The interactive AR steps
-interface Step {
-  step_number: number;
-  title: string;
-  instruction: string;
-  warning?: string;
-  mask_id: string;
-  overlay: { type: string; x: number; y: number };
-  tools_needed?: string[];
-}
-
 interface GuideViewProps {
-  step: Step;
+  repairData: RepairResponse;
   currentStepIndex: number;
-  totalSteps: number;
   onNext: () => void;
   onPrev: () => void;
   onShowTools: () => void;
 }
 
-const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowTools }: GuideViewProps) => {
+const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools }: GuideViewProps) => {
+  const step = repairData.steps[currentStepIndex];
+  const totalSteps = repairData.steps.length;
+
+  if (!step) {
+    return <div>No step data available</div>;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-slate-950 animate-in fade-in duration-500">
       {/* Header */}
@@ -256,9 +255,15 @@ const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowT
             <Wrench size={16} className="text-blue-400" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white leading-tight">{MOCK_API_RESPONSE.device_name}</h1>
+            <h1 className="text-sm font-bold text-white leading-tight">{repairData.device}</h1>
             <div className="flex items-center gap-2 text-[10px] text-slate-400">
-              <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-500 rounded border border-yellow-500/20">{MOCK_API_RESPONSE.difficulty}</span>
+              <span className={`px-1.5 py-0.5 rounded border ${
+                repairData.source === 'iFixit' 
+                  ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                  : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+              }`}>
+                {repairData.source}
+              </span>
               <span>• {totalSteps} Steps</span>
             </div>
           </div>
@@ -271,10 +276,8 @@ const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowT
       {/* AR Workspace */}
       <div className="flex-1 relative overflow-hidden bg-black group">
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
-          {/* Mocking the Machine Image */}
-          <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out" style={{
-            transform: currentStepIndex === 1 ? 'scale(1.1) translateY(10px)' : 'scale(1)'
-          }}>
+          {/* Placeholder for 3D view - can be enhanced with segmentation masks later */}
+          <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
              {/* Generic Machine Shapes */}
              <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" /> 
              <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
@@ -282,42 +285,8 @@ const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowT
              </div>
              <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
              <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
-
-             {/* SAM 3 MASKS */}
-             
-             {/* Mask: Tank */}
-             <div className={`
-               absolute top-12 left-4 w-12 h-32 rounded border-2 border-blue-500 bg-blue-500/20 transition-opacity duration-500
-               ${step.mask_id === 'tank' ? 'opacity-100' : 'opacity-0'}
-             `}>
-               <div className="absolute -right-2 top-1/2 translate-x-full -translate-y-1/2 pl-4">
-                 <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap font-bold">
-                   Water Tank
-                 </div>
-                 <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full" />
-                 <div className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 w-4 h-px bg-blue-500" />
-               </div>
-             </div>
-
-             {/* Mask: Screws */}
-             <div className={`absolute top-8 left-0 w-full flex justify-around px-8 transition-opacity duration-500 ${step.mask_id === 'screws' ? 'opacity-100' : 'opacity-0'}`}>
-               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 bg-yellow-500/30 animate-ping" />
-               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 bg-yellow-500/30 animate-ping" style={{ animationDelay: '0.2s' }} />
-             </div>
-
-             {/* Mask: Panel */}
-             <div className={`
-               absolute top-0 w-full h-12 border-b-2 border-purple-500 bg-purple-500/10 transition-opacity duration-500
-               ${step.mask_id === 'panel' ? 'opacity-100' : 'opacity-0'}
-             `}/>
           </div>
         </div>
-
-        {step.mask_id === 'tank' && (
-           <div className="absolute top-1/2 left-1/2 -translate-x-16 -translate-y-20 flex flex-col items-center animate-bounce">
-             <ArrowRight className="-rotate-90 text-white drop-shadow-md" size={32} />
-           </div>
-        )}
       </div>
 
       {/* Instructions Panel */}
@@ -327,28 +296,31 @@ const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowT
          <div className="space-y-4">
            <div className="flex items-start justify-between">
              <div>
-               <span className="text-blue-500 text-xs font-bold tracking-wider uppercase mb-1 block">Step {step.step_number}</span>
-               <h2 className="text-xl font-bold text-white">{step.title}</h2>
+               <span className="text-blue-500 text-xs font-bold tracking-wider uppercase mb-1 block">
+                 Step {step.step}
+               </span>
+               <h2 className="text-xl font-bold text-white">
+                 {step.instruction}
+               </h2>
              </div>
-             {step.tools_needed && (
-               <div className="flex gap-1">
-                 {step.tools_needed.map((t: string, i: number) => (
-                   <div key={i} className="bg-slate-800 p-1.5 rounded border border-slate-700" title={t}>
-                     <Wrench size={12} className="text-slate-400" />
-                   </div>
-                 ))}
-               </div>
-             )}
            </div>
-
-           <p className="text-slate-300 leading-relaxed">
-             {step.instruction}
-           </p>
 
            {step.warning && (
              <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg flex gap-3 items-start">
                <AlertTriangle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
                <p className="text-yellow-200 text-sm">{step.warning}</p>
+             </div>
+           )}
+
+           {/* Safety warnings - show on first step */}
+           {currentStepIndex === 0 && repairData.safety.length > 0 && (
+             <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+               <h3 className="text-red-400 font-bold text-sm mb-2">Safety Precautions:</h3>
+               <ul className="text-red-200 text-sm space-y-1">
+                 {repairData.safety.map((warning, i) => (
+                   <li key={i}>• {warning}</li>
+                 ))}
+               </ul>
              </div>
            )}
          </div>
@@ -364,8 +336,13 @@ const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowT
            </button>
            
            <div className="flex gap-1.5">
-             {MOCK_API_RESPONSE.steps.map((_, i) => (
-               <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === currentStepIndex ? 'bg-blue-500' : 'bg-slate-700'}`} />
+             {repairData.steps.map((_, i) => (
+               <div 
+                 key={i} 
+                 className={`w-2 h-2 rounded-full transition-colors ${
+                   i === currentStepIndex ? 'bg-blue-500' : 'bg-slate-700'
+                 }`} 
+               />
              ))}
            </div>
 
@@ -385,65 +362,113 @@ const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowT
 // --- MAIN APP ---
 
 export default function App() {
-  const [view, setView] = useState<'upload' | 'diagnosis' | 'analyzing' | 'guide'>('upload');
-  const [image, setImage] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
-  const [analysisLog, setAnalysisLog] = useState<string[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
   const [showTools, setShowTools] = useState(false);
 
-  const handleImageSelect = (imgData: string) => {
-    setImage(imgData);
-    setView('diagnosis'); // Move to new Diagnosis screen
+  // Use Zustand store
+  const {
+    currentView,
+    uploadedImage,
+    uploadedFile,
+    userDescription,
+    repairData,
+    analysisLogs,
+    isAnalyzing,
+    currentStepIndex,
+    setCurrentView,
+    setUploadedImage,
+    setUserDescription,
+    setRepairData,
+    addAnalysisLog,
+    clearAnalysisLogs,
+    setIsAnalyzing,
+    setError,
+    setCurrentStepIndex,
+  } = useAppStore();
+
+  const handleImageSelect = (imgData: string, file: File) => {
+    setUploadedImage(imgData, file);
+    setCurrentView('diagnosis');
   };
 
-  const startAnalysis = () => {
-    setView('analyzing');
-    setAnalysisLog([]); 
+  const startAnalysis = async () => {
+    if (!uploadedFile || !userDescription.trim()) {
+      setError('Please provide an image and description');
+      return;
+    }
 
-    let step = 0;
-    const interval = setInterval(() => {
-      if (step >= ANALYSIS_TIMELINE.length) {
-        clearInterval(interval);
-        setTimeout(() => setView('guide'), 1000);
-        return;
+    setCurrentView('analyzing');
+    setIsAnalyzing(true);
+    clearAnalysisLogs();
+    setError(null);
+
+    try {
+      // Initial log
+      addAnalysisLog('Uploading image to RepairLens Brain...');
+
+      // Make API call
+      const response = await repairService.analyze({
+        file: uploadedFile,
+        user_prompt: userDescription,
+      });
+
+      // Stream reasoning logs to UI
+      if (response.reasoning_log && response.reasoning_log.length > 0) {
+        for (let i = 0; i < response.reasoning_log.length; i++) {
+          setTimeout(() => {
+            addAnalysisLog(response.reasoning_log[i]);
+          }, (i + 1) * 800);
+        }
       }
-      
-      const logItem = ANALYSIS_TIMELINE[step];
-      if (logItem) {
-          setAnalysisLog(prev => [...prev, logItem.msg]);
-      }
-      step++;
-    }, 1000);
+
+      // Save result
+      setRepairData(response);
+
+      // Transition to guide view
+      const totalDelay = (response.reasoning_log.length + 1) * 800 + 1000;
+      setTimeout(() => {
+        setIsAnalyzing(false);
+        setCurrentView('guide');
+      }, totalDelay);
+
+    } catch (err: any) {
+      const error = err as ApiError;
+      setError(error.detail || 'Failed to analyze image. Please try again.');
+      setIsAnalyzing(false);
+      setCurrentView('diagnosis');
+      console.error('Analysis error:', error);
+    }
   };
 
   return (
     <div className="bg-[#09090b] min-h-screen text-white font-sans selection:bg-blue-500/30">
-      {view === 'upload' && (
+      {currentView === 'upload' && (
         <UploadView onImageSelect={handleImageSelect} />
       )}
 
-      {view === 'diagnosis' && (
+      {currentView === 'diagnosis' && (
         <DiagnosisView 
-          image={image}
-          description={description}
-          onDescriptionChange={setDescription}
+          image={uploadedImage}
+          description={userDescription}
+          onDescriptionChange={setUserDescription}
           onStartAnalysis={startAnalysis}
-          onBack={() => setView('upload')}
+          onBack={() => setCurrentView('upload')}
         />
       )}
       
-      {view === 'analyzing' && (
-        <AnalyzingView logs={analysisLog} />
+      {currentView === 'analyzing' && (
+        <AnalyzingView logs={analysisLogs} />
       )}
       
-      {view === 'guide' && (
+      {currentView === 'guide' && repairData && (
         <GuideView 
-          step={MOCK_API_RESPONSE.steps[currentStep]}
-          currentStepIndex={currentStep}
-          totalSteps={MOCK_API_RESPONSE.steps.length}
-          onNext={() => setCurrentStep(Math.min(MOCK_API_RESPONSE.steps.length - 1, currentStep + 1))}
-          onPrev={() => setCurrentStep(Math.max(0, currentStep - 1))}
+          repairData={repairData}
+          currentStepIndex={currentStepIndex}
+          onNext={() => 
+            setCurrentStepIndex(
+              Math.min(repairData.steps.length - 1, currentStepIndex + 1)
+            )
+          }
+          onPrev={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
           onShowTools={() => setShowTools(true)}
         />
       )}
