@@ -1,7 +1,6 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
-  Camera, 
   Wrench, 
   AlertTriangle, 
   CheckCircle2, 
@@ -10,7 +9,6 @@ import {
   Cpu, 
   ArrowRight,
   Hammer,
-  Layers,
   Upload,
   Scan
 } from 'lucide-react';
