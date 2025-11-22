@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
+import "./frontend/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Assembler - Create Blueprints & Instructions",
-  description: "Generate IKEA-style assembly instructions from any object.",
+  title: "Explode Anything",
+  description: "Upload a photo. SAM 3 will identify the parts. SAM 3D will build the geometry.",
 };
 
 export default function RootLayout({
@@ -18,13 +16,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} flex min-h-screen flex-col bg-[#f8f9fb] text-gray-900 antialiased`}>
-        <Header />
-        <main className="flex-1">
-          {children}
-        </main>
-        <Footer />
+      <body className={inter.className}>
+        {children}
       </body>
     </html>
   );
 }
+
