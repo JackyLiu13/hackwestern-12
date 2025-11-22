@@ -44,20 +44,41 @@ async def analyze_stream(
     Streaming version of analyze endpoint.
     Sends logs in real-time via Server-Sent Events (SSE).
     """
+    # Read image bytes BEFORE creating the generator
+    # This ensures the file is read while it's still open
+    try:
+        image_data = await file.read()
+    except Exception as e:
+        error_event = {"type": "error", "data": f"Failed to read file: {str(e)}"}
+        async def error_generator():
+            yield f"data: {json.dumps(error_event)}\n\n"
+        return StreamingResponse(
+            error_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"
+            }
+        )
+    
     async def generate():
         try:
-            # Read image bytes
-            image_data = await file.read()
-            
-            # Process with streaming logs
+            # Process with streaming logs using already-read image data
             async for event in brain.process_request_streaming(image_data, user_prompt):
                 # Send SSE formatted data
                 yield f"data: {json.dumps(event)}\n\n"
                 await asyncio.sleep(0.01)  # Small delay for client processing
                 
         except Exception as e:
+            print(f"Stream error: {e}")
+            import traceback
+            traceback.print_exc()
             error_event = {"type": "error", "data": str(e)}
-            yield f"data: {json.dumps(error_event)}\n\n"
+            try:
+                yield f"data: {json.dumps(error_event)}\n\n"
+            except Exception as send_error:
+                print(f"Failed to send error event: {send_error}")
     
     return StreamingResponse(
         generate(),

@@ -57,8 +57,11 @@ export const repairService = {
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
+          let isResolved = false;
 
           async function processStream(): Promise<void> {
+            if (isResolved) return;
+            
             try {
               const { done, value } = await reader.read();
               
@@ -88,10 +91,13 @@ export const repairService = {
                     if (event.type === 'log') {
                       onLog(event.data);
                     } else if (event.type === 'result') {
+                      isResolved = true;
                       resolve(event.data);
                       return;
                     } else if (event.type === 'error') {
-                      reject(new Error(event.data));
+                      isResolved = true;
+                      const errorMsg = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
+                      reject(new Error(errorMsg));
                       return;
                     }
                   } catch (e) {
@@ -103,7 +109,10 @@ export const repairService = {
               // Continue reading
               await processStream();
             } catch (error) {
-              reject(error);
+              if (!isResolved) {
+                isResolved = true;
+                reject(error);
+              }
             }
           }
 

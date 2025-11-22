@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -16,7 +17,13 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "RepairLens API"
 
     class Config:
-        env_file = ".env"
+        env_file = str(Path(__file__).parent.parent.parent / ".env")
         case_sensitive = True
 
 settings = Settings()
+
+# Debug: Print if API key is loaded
+if settings.GOOGLE_API_KEY:
+    print(f"✓ GOOGLE_API_KEY loaded successfully")
+else:
+    print(f"⚠ GOOGLE_API_KEY not found. Make sure .env file exists with GOOGLE_API_KEY=your_key")
