@@ -14,8 +14,11 @@ import {
   Hammer,
   Upload,
   Scan,
+  Download,
   Home
 } from 'lucide-react';
+import { generatePDF } from '@/lib/pdfGenerator';
+import { Step, RepairGuide } from '@/types/repair';
 
 /**
  * REPAIRLENS - HYBRID IMPLEMENTATION
@@ -191,7 +194,7 @@ interface GuideViewProps {
   onNext: () => void;
   onPrev: () => void;
   onShowTools: () => void;
-  onReset: () => void;
+  onDownloadPDF: () => void;
 }
 
 const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onReset }: GuideViewProps) => {
@@ -225,6 +228,13 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={onDownloadPDF}
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
+            title="Download PDF Guide"
+          >
+            <Download size={20} />
+          </button>
           <button 
             onClick={onReset} 
             className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
@@ -432,6 +442,7 @@ export default function App() {
           }
           onPrev={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
           onShowTools={() => setShowTools(true)}
+          onDownloadPDF={() => generatePDF(MOCK_API_RESPONSE)}
           onReset={() => {
             // Reset all state and go back to upload
             setCurrentView('upload');
