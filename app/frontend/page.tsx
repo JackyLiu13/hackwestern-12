@@ -1,46 +1,92 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Layers, 
-  Maximize, 
-  Box, 
-  Scan, 
-  Upload, 
+  Camera, 
+  Wrench, 
+  AlertTriangle, 
+  CheckCircle2, 
+  ChevronRight, 
+  ChevronLeft, 
   Cpu, 
-  Battery, 
-  Aperture, 
-  Smartphone,
-  Info,
-  CheckCircle2,
-  Loader2
+  ArrowRight,
+  Hammer,
+  Layers,
+  Upload,
+  Scan
 } from 'lucide-react';
 
 /**
- * SAM 3 EXPLODED VIEW TOOL (CSS 3D Engine)
- * * A stable, high-performance implementation of the exploded view concept.
- * Uses CSS3 transform-style: preserve-3d to avoid WebGL context crashes
- * while maintaining smooth 60fps interactivity.
+ * REPAIRLENS - HYBRID IMPLEMENTATION
+ * * Visual Style & Upload Logic: Adapted from your 'Explode Anything' tool (page.tsx).
+ * * Core Logic: RepairLens Workflow (Upload -> Diagnosis -> Analysis -> Guide).
  */
 
-export default function App() {
-  const [appState, setAppState] = useState('upload'); // upload, scanning, interactive
-  const [scanProgress, setScanProgress] = useState(0);
-  
-  // 3D State
-  const [explode, setExplode] = useState(0); // 0 to 1
-  const [rotation, setRotation] = useState({ x: 60, y: 0, z: 30 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
-  const [activePart, setActivePart] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+// --- MOCK DATA ---
+const MOCK_API_RESPONSE = {
+  device_name: "Breville Barista Express",
+  difficulty: "Moderate",
+  source: "Gemini-Generative",
+  tools_needed: ["Torx T20 Driver", "Spudger", "Phillips #2"],
+  steps: [
+    {
+      step_number: 1,
+      title: "Remove Water Reservoir",
+      instruction: "Lift the water tank vertically to disengage the bottom valve. Set it aside to prevent spills.",
+      warning: "Ensure machine is unplugged.",
+      mask_id: "tank",
+      overlay: { type: "arrow_up", x: 50, y: 30 }
+    },
+    {
+      step_number: 2,
+      title: "Locate Rear Screws",
+      instruction: "Identify the two T20 Torx screws hidden beneath the tank rim. These hold the top panel in place.",
+      tools_needed: ["Torx T20 Driver"],
+      mask_id: "screws",
+      overlay: { type: "highlight", x: 50, y: 45 }
+    },
+    {
+      step_number: 3,
+      title: "Pry Top Panel",
+      instruction: "Insert a spudger into the seam between the top panel and the side chassis. Gently leverage upwards to release the plastic clips.",
+      warning: "Plastic clips are fragile.",
+      tools_needed: ["Spudger"],
+      mask_id: "panel",
+      overlay: { type: "motion_pry", x: 60, y: 40 }
+    }
+  ]
+};
 
-  // --- SIMULATED WORKFLOW ---
+const ANALYSIS_TIMELINE = [
+  { msg: "Sending image to Vision Engine...", delay: 500 },
+  { msg: "Gemini 2.5: Identifying object as 'Espresso Machine'...", delay: 1500 },
+  { msg: "LangGraph: Checking iFixit API for guides...", delay: 2500 },
+  { msg: "iFixit: No exact match found (404).", delay: 3500 },
+  { msg: "LangGraph: Rerouting to Generative Brain...", delay: 4000 },
+  { msg: "Gemini: Deducing disassembly steps...", delay: 5500 },
+  { msg: "SAM 3: Generating segmentation masks for 3 parts...", delay: 7000 },
+  { msg: "Compiling AR Scene Graph...", delay: 8000 },
+];
+
+// --- SUB-COMPONENTS ---
+
+// 1. Upload View - Implementation adapted from your page.tsx
+interface UploadViewProps {
+  onImageSelect: (imageData: string) => void;
+}
+
+const UploadView = ({ onImageSelect }: UploadViewProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // File selected, start the scan process
-      startScan();
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        if (e.target?.result && typeof e.target.result === 'string') {
+          onImageSelect(e.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -48,433 +94,361 @@ export default function App() {
     fileInputRef.current?.click();
   };
 
-  const startScan = () => {
-    setAppState('scanning');
-    setScanProgress(0);
-    
-    // Simulate SAM 3 analysis phases
-    const phases = [10, 30, 60, 80, 100];
-    phases.forEach((p, i) => {
-      setTimeout(() => {
-        setScanProgress(p);
-        if (p === 100) setTimeout(() => setAppState('interactive'), 500);
-      }, (i + 1) * 800);
-    });
-  };
-
-  // --- 3D INTERACTION HANDLERS ---
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (appState !== 'interactive') return;
-    setIsDragging(true);
-    setLastMouse({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const deltaX = e.clientX - lastMouse.x;
-    const deltaY = e.clientY - lastMouse.y;
-    
-    setRotation(prev => ({
-      x: Math.max(0, Math.min(90, prev.x - deltaY * 0.5)), // Limit tilt (0 to 90 deg)
-      y: prev.y,
-      z: prev.z - deltaX * 0.5 // Infinite rotation on Z axis
-    }));
-    setLastMouse({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
-
-  // --- COMPONENTS ---
-
-  interface LayerProps {
-    zOffset: number;
-    color: string;
-    label: string;
-    icon?: React.ComponentType<{ className?: string; size?: number }>;
-    content: React.ReactNode;
-    opacity?: number;
-  }
-
-  const Layer = ({ zOffset, color, label, icon: Icon, content, opacity = 0.95 }: LayerProps) => {
-    // Calculate real Z position based on explode factor
-    const currentZ = zOffset * explode * 250; 
-    const isHovered = activePart === label;
-
-    return (
-      <div 
-        className="absolute top-1/2 left-1/2 w-56 h-96 transition-all duration-500 ease-out"
-        style={{
-          transform: `translate(-50%, -50%) translateZ(${currentZ}px)`,
-          transformStyle: 'preserve-3d',
-        }}
-        onMouseEnter={() => setActivePart(label)}
-        onMouseLeave={() => setActivePart(null)}
-      >
-        {/* Physical Plate */}
-        <div 
-          className={`
-            absolute inset-0 rounded-3xl border transition-all duration-300 backdrop-blur-md
-            ${isHovered ? 'border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'border-white/10 shadow-2xl'}
-          `}
-          style={{
-            backgroundColor: color,
-            opacity: opacity,
-            boxShadow: isHovered ? '' : '0 0 15px rgba(0,0,0,0.5)',
-          }}
-        >
-          {/* Side Thickness (Pseudo-3D) */}
-          <div className="absolute inset-0 rounded-3xl bg-black/20 transform translate-z-[-4px]" />
-          
-          {/* Layer Content */}
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 relative overflow-hidden">
-            {content}
-            {/* Tech Grid Overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
-          </div>
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#09090b] p-6 animate-in fade-in duration-500">
+      <div className="max-w-2xl w-full text-center space-y-10">
+        <div className="space-y-4">
+           <div className="inline-flex items-center justify-center p-4 bg-blue-500/10 rounded-2xl mb-4">
+              <Wrench className="w-12 h-12 text-blue-500" />
+           </div>
+           <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50">
+             RepairLens
+           </h1>
+           <p className="text-xl text-slate-400 max-w-lg mx-auto">
+             Upload a photo of what's broken. AI will generate an Ikea-style repair guide.
+           </p>
         </div>
 
-        {/* Floating Label (Only visible when exploded) */}
-        <div 
-          className={`
-            absolute top-8 right-0 h-px bg-blue-500 origin-left transition-all duration-300
-            ${(isHovered || explode > 0.1) ? 'w-40 opacity-100' : 'w-0 opacity-0'}
-          `}
-          style={{ transform: 'translateX(100%)' }}
-        >
-          {/* Label Text Tag */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pl-4">
-            <div className={`
-              bg-slate-900/90 border border-blue-500/30 text-blue-100 px-4 py-2 rounded-lg 
-              text-xs font-bold tracking-wide shadow-xl flex items-center gap-3 whitespace-nowrap
-              backdrop-blur-xl
-            `}>
-              {Icon && <Icon size={14} className="text-blue-400" />}
-              {label}
-            </div>
-          </div>
-          {/* Connector Dot */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]" />
+        <div className="relative">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button 
+            onClick={handleUploadClick}
+            className="group relative inline-flex flex-col items-center gap-4 px-16 py-12 rounded-3xl border-2 border-dashed border-slate-700 hover:border-blue-500 hover:bg-slate-900/50 transition-all cursor-pointer"
+          >
+             <Upload className="w-10 h-10 text-slate-400 group-hover:text-blue-400 transition-colors" />
+             <span className="text-slate-300 font-medium">Click to upload image</span>
+          </button>
         </div>
       </div>
-    );
+    </div>
+  );
+};
+
+// 2. Diagnosis View - The new transition screen you requested
+interface DiagnosisViewProps {
+  image: string | null;
+  description: string;
+  onDescriptionChange: (value: string) => void;
+  onStartAnalysis: () => void;
+  onBack: () => void;
+}
+
+const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysis, onBack }: DiagnosisViewProps) => (
+  <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#09090b] p-6 animate-in slide-in-from-right duration-500">
+    <div className="max-w-md w-full space-y-8">
+      
+      {/* Image Preview Card */}
+      <div className="relative w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl group">
+        {image && <img src={image} alt="Broken Item" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
+          <div className="flex items-center gap-2 text-green-400 mb-1">
+            <CheckCircle2 size={16} />
+            <span className="text-xs font-bold uppercase tracking-wider">Image Captured</span>
+          </div>
+        </div>
+        <button 
+          onClick={onBack} 
+          className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/70 text-white transition-colors"
+        >
+          <Upload size={16} />
+        </button>
+      </div>
+
+      {/* Input Section */}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-white">What seems to be the problem?</h2>
+          <p className="text-slate-400 text-sm">Describe the issue to help Gemini diagnose the mechanics.</p>
+        </div>
+
+        <textarea 
+          value={description}
+          onChange={(e) => onDescriptionChange(e.target.value)}
+          placeholder="e.g. The steam wand is loose and leaking..."
+          autoFocus
+          className="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:outline-none resize-none h-32 transition-all"
+        />
+
+        <button 
+          onClick={onStartAnalysis}
+          disabled={!description.trim()}
+          className={`
+            w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all
+            ${description.trim()
+              ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20' 
+              : 'bg-slate-800 text-slate-500 cursor-not-allowed'}
+          `}
+        >
+          <Scan size={20} />
+          Analyze & Fix
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// 3. Analyzing View - Matches the style of your Exploded View loading state
+interface AnalyzingViewProps {
+  logs: string[];
+}
+
+const AnalyzingView = ({ logs }: AnalyzingViewProps) => (
+  <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#09090b]">
+     <div className="w-80 space-y-8 text-center">
+        <div className="relative w-32 h-32 mx-auto">
+           <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-[spin_3s_linear_infinite]" />
+           <div className="absolute inset-0 border-t-4 border-blue-500 rounded-full animate-[spin_1s_linear_infinite]" />
+           <div className="absolute inset-0 flex items-center justify-center">
+              <Cpu className="w-10 h-10 text-blue-400 animate-pulse" />
+           </div>
+        </div>
+        
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-white">Generating Repair Guide</h3>
+          
+          {/* Log Stream */}
+          <div className="h-32 overflow-hidden relative mask-linear-fade">
+             <div className="space-y-3 flex flex-col items-center">
+               {[...logs].reverse().map((log, i) => (
+                 <div key={i} className="flex items-center gap-3 text-xs animate-in slide-in-from-bottom-2 fade-in duration-300">
+                   <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? 'bg-blue-400 animate-pulse' : 'bg-slate-700'}`} />
+                   <span className={i === 0 ? 'text-blue-200 font-medium' : 'text-slate-500'}>{log}</span>
+                 </div>
+               ))}
+             </div>
+          </div>
+        </div>
+     </div>
+  </div>
+);
+
+// 4. Guide View - The interactive AR steps
+interface Step {
+  step_number: number;
+  title: string;
+  instruction: string;
+  warning?: string;
+  mask_id: string;
+  overlay: { type: string; x: number; y: number };
+  tools_needed?: string[];
+}
+
+interface GuideViewProps {
+  step: Step;
+  currentStepIndex: number;
+  totalSteps: number;
+  onNext: () => void;
+  onPrev: () => void;
+  onShowTools: () => void;
+}
+
+const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowTools }: GuideViewProps) => {
+  return (
+    <div className="flex flex-col h-screen bg-slate-950 animate-in fade-in duration-500">
+      {/* Header */}
+      <header className="h-14 border-b border-slate-800 flex items-center justify-between px-4 bg-slate-900 z-20">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-500/20 rounded-lg">
+            <Wrench size={16} className="text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-white leading-tight">{MOCK_API_RESPONSE.device_name}</h1>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400">
+              <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-500 rounded border border-yellow-500/20">{MOCK_API_RESPONSE.difficulty}</span>
+              <span>• {totalSteps} Steps</span>
+            </div>
+          </div>
+        </div>
+        <button onClick={onShowTools} className="p-2 hover:bg-slate-800 rounded-full text-slate-400">
+          <Hammer size={20} />
+        </button>
+      </header>
+
+      {/* AR Workspace */}
+      <div className="flex-1 relative overflow-hidden bg-black group">
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+          {/* Mocking the Machine Image */}
+          <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out" style={{
+            transform: currentStepIndex === 1 ? 'scale(1.1) translateY(10px)' : 'scale(1)'
+          }}>
+             {/* Generic Machine Shapes */}
+             <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" /> 
+             <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
+                <div className="w-32 h-2 bg-slate-500 rounded-full" />
+             </div>
+             <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
+             <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
+
+             {/* SAM 3 MASKS */}
+             
+             {/* Mask: Tank */}
+             <div className={`
+               absolute top-12 left-4 w-12 h-32 rounded border-2 border-blue-500 bg-blue-500/20 transition-opacity duration-500
+               ${step.mask_id === 'tank' ? 'opacity-100' : 'opacity-0'}
+             `}>
+               <div className="absolute -right-2 top-1/2 translate-x-full -translate-y-1/2 pl-4">
+                 <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap font-bold">
+                   Water Tank
+                 </div>
+                 <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-blue-500 rounded-full" />
+                 <div className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 w-4 h-px bg-blue-500" />
+               </div>
+             </div>
+
+             {/* Mask: Screws */}
+             <div className={`absolute top-8 left-0 w-full flex justify-around px-8 transition-opacity duration-500 ${step.mask_id === 'screws' ? 'opacity-100' : 'opacity-0'}`}>
+               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 bg-yellow-500/30 animate-ping" />
+               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 bg-yellow-500/30 animate-ping" style={{ animationDelay: '0.2s' }} />
+             </div>
+
+             {/* Mask: Panel */}
+             <div className={`
+               absolute top-0 w-full h-12 border-b-2 border-purple-500 bg-purple-500/10 transition-opacity duration-500
+               ${step.mask_id === 'panel' ? 'opacity-100' : 'opacity-0'}
+             `}/>
+          </div>
+        </div>
+
+        {step.mask_id === 'tank' && (
+           <div className="absolute top-1/2 left-1/2 -translate-x-16 -translate-y-20 flex flex-col items-center animate-bounce">
+             <ArrowRight className="-rotate-90 text-white drop-shadow-md" size={32} />
+           </div>
+        )}
+      </div>
+
+      {/* Instructions Panel */}
+      <div className="bg-slate-900 border-t border-slate-800 p-6 pb-8 space-y-6 rounded-t-3xl -mt-6 relative z-10">
+         <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-2" />
+         
+         <div className="space-y-4">
+           <div className="flex items-start justify-between">
+             <div>
+               <span className="text-blue-500 text-xs font-bold tracking-wider uppercase mb-1 block">Step {step.step_number}</span>
+               <h2 className="text-xl font-bold text-white">{step.title}</h2>
+             </div>
+             {step.tools_needed && (
+               <div className="flex gap-1">
+                 {step.tools_needed.map((t: string, i: number) => (
+                   <div key={i} className="bg-slate-800 p-1.5 rounded border border-slate-700" title={t}>
+                     <Wrench size={12} className="text-slate-400" />
+                   </div>
+                 ))}
+               </div>
+             )}
+           </div>
+
+           <p className="text-slate-300 leading-relaxed">
+             {step.instruction}
+           </p>
+
+           {step.warning && (
+             <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg flex gap-3 items-start">
+               <AlertTriangle className="text-yellow-500 shrink-0 mt-0.5" size={16} />
+               <p className="text-yellow-200 text-sm">{step.warning}</p>
+             </div>
+           )}
+         </div>
+
+         {/* Navigation */}
+         <div className="flex items-center justify-between pt-2">
+           <button 
+             onClick={onPrev}
+             disabled={currentStepIndex === 0}
+             className="p-4 rounded-full bg-slate-800 disabled:opacity-30 text-white hover:bg-slate-700 transition-colors"
+           >
+             <ChevronLeft size={24} />
+           </button>
+           
+           <div className="flex gap-1.5">
+             {MOCK_API_RESPONSE.steps.map((_, i) => (
+               <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === currentStepIndex ? 'bg-blue-500' : 'bg-slate-700'}`} />
+             ))}
+           </div>
+
+           <button 
+             onClick={onNext}
+             disabled={currentStepIndex === totalSteps - 1}
+             className="p-4 rounded-full bg-blue-600 disabled:opacity-30 text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/20"
+           >
+             <ChevronRight size={24} />
+           </button>
+         </div>
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN APP ---
+
+export default function App() {
+  const [view, setView] = useState<'upload' | 'diagnosis' | 'analyzing' | 'guide'>('upload');
+  const [image, setImage] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
+  const [analysisLog, setAnalysisLog] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [showTools, setShowTools] = useState(false);
+
+  const handleImageSelect = (imgData: string) => {
+    setImage(imgData);
+    setView('diagnosis'); // Move to new Diagnosis screen
+  };
+
+  const startAnalysis = () => {
+    setView('analyzing');
+    setAnalysisLog([]); 
+
+    let step = 0;
+    const interval = setInterval(() => {
+      if (step >= ANALYSIS_TIMELINE.length) {
+        clearInterval(interval);
+        setTimeout(() => setView('guide'), 1000);
+        return;
+      }
+      
+      const logItem = ANALYSIS_TIMELINE[step];
+      if (logItem) {
+          setAnalysisLog(prev => [...prev, logItem.msg]);
+      }
+      step++;
+    }, 1000);
   };
 
   return (
-    <div 
-      className="flex flex-col h-screen bg-[#09090b] text-white font-sans overflow-hidden select-none"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    >
-      
-      {/* --- 1. UPLOAD SCREEN --- */}
-      {appState === 'upload' && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#09090b] p-6">
-          <div className="max-w-2xl w-full text-center space-y-10">
-            <div className="space-y-4">
-               <div className="inline-flex items-center justify-center p-4 bg-blue-500/10 rounded-2xl mb-4">
-                  <Layers className="w-12 h-12 text-blue-500" />
-               </div>
-               <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50">
-                 Explode Anything
-               </h1>
-               <p className="text-xl text-slate-400 max-w-lg mx-auto">
-                 Upload a photo. SAM 3 will identify the parts. SAM 3D will build the geometry.
-               </p>
-            </div>
-
-            <div className="relative">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              <button 
-                onClick={handleUploadClick}
-                className="group relative inline-flex flex-col items-center gap-4 px-16 py-12 rounded-3xl border-2 border-dashed border-slate-700 hover:border-blue-500 hover:bg-slate-900/50 transition-all cursor-pointer"
-              >
-                 <Upload className="w-10 h-10 text-slate-400 group-hover:text-blue-400 transition-colors" />
-                 <span className="text-slate-300 font-medium">Click to upload image</span>
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="bg-[#09090b] min-h-screen text-white font-sans selection:bg-blue-500/30">
+      {view === 'upload' && (
+        <UploadView onImageSelect={handleImageSelect} />
       )}
 
-      {/* --- 2. SCANNING SCREEN --- */}
-      {appState === 'scanning' && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#09090b]">
-           <div className="w-80 space-y-8 text-center">
-              <div className="relative w-32 h-32 mx-auto">
-                 <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-[spin_3s_linear_infinite]" />
-                 <div className="absolute inset-0 border-t-4 border-blue-500 rounded-full animate-[spin_1s_linear_infinite]" />
-                 <div className="absolute inset-0 flex items-center justify-center">
-                    <Scan className="w-10 h-10 text-blue-400 animate-pulse" />
-                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-white">Analyzing Geometry</h3>
-                <div className="flex justify-between text-xs text-slate-400 font-mono uppercase tracking-widest">
-                   <span>SAM 3 Processing</span>
-                   <span>{scanProgress}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                   <div 
-                     className="h-full bg-blue-500 transition-all duration-300 ease-out"
-                     style={{ width: `${scanProgress}%` }}
-                   />
-                </div>
-                <p className="text-xs text-slate-500 pt-2">
-                  {scanProgress < 30 ? "Segmenting components..." : 
-                   scanProgress < 60 ? "Generating 3D mesh..." : 
-                   "Texturing hidden surfaces..."}
-                </p>
-              </div>
-           </div>
-        </div>
+      {view === 'diagnosis' && (
+        <DiagnosisView 
+          image={image}
+          description={description}
+          onDescriptionChange={setDescription}
+          onStartAnalysis={startAnalysis}
+          onBack={() => setView('upload')}
+        />
       )}
-
-      {/* --- 3. INTERACTIVE WORKSPACE --- */}
       
-      {/* HEADER */}
-      <header className={`fixed top-0 w-full z-40 px-6 py-4 flex justify-between items-center pointer-events-none transition-opacity duration-500 ${appState === 'interactive' ? 'opacity-100' : 'opacity-0'}`}>
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Layers size={18} className="text-white" />
-            </div>
-            <h1 className="text-lg font-bold tracking-wide">Explode<span className="text-blue-500">AI</span></h1>
-          </div>
-        </div>
-        <div className="pointer-events-auto flex gap-3">
-          <button 
-             onClick={() => setAppState('upload')}
-             className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-full transition-colors flex items-center gap-2 border border-white/5"
-          >
-            <Scan size={14} />
-            New Scan
-          </button>
-        </div>
-      </header>
-
-      {/* 3D VIEWPORT */}
-      <div className={`flex-1 relative flex items-center justify-center perspective-1000 transition-opacity duration-1000 ${appState === 'interactive' ? 'opacity-100' : 'opacity-0'}`}>
-        <div 
-          className="relative w-0 h-0 transition-transform duration-75 ease-linear"
-          style={{
-            transform: `rotateX(${rotation.x}deg) rotateY(0deg) rotateZ(${rotation.z}deg)`,
-            transformStyle: 'preserve-3d',
-          }}
-        >
-          {/* Floor Shadow */}
-          <div 
-            className="absolute top-1/2 left-1/2 w-80 h-[30rem] bg-blue-500/20 blur-[100px] transition-all duration-500 rounded-full"
-            style={{
-              transform: `translate(-50%, -50%) translateZ(${-200 - (explode * 150)}px)`,
-              opacity: 0.3 + (explode * 0.3)
-            }}
-          />
-
-          {/* --- COMPONENT LAYERS --- */}
-
-          {/* 1. Back Glass */}
-          <Layer 
-            zOffset={-1.2} 
-            label="Rear Glass Panel" 
-            color="#0f172a"
-            icon={Smartphone}
-            content={<div className="w-full h-full bg-slate-900 rounded-2xl border border-white/5 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-800 to-slate-950" />}
-          />
-
-          {/* 2. Wireless Coil */}
-          <Layer 
-            zOffset={-0.6} 
-            label="Wireless Charging Coil" 
-            color="#1e293b" 
-            icon={Zap}
-            opacity={0.8}
-            content={
-              <div className="w-32 h-32 rounded-full border-8 border-orange-500/20 flex items-center justify-center">
-                 <div className="w-24 h-24 rounded-full border-8 border-orange-500/30" />
-              </div>
-            }
-          />
-
-          {/* 3. Battery & Chassis */}
-          <Layer 
-            zOffset={0} 
-            label="Li-Ion Battery (4500mAh)" 
-            color="#020617" 
-            icon={Battery}
-            opacity={1}
-            content={
-              <div className="w-full h-full flex flex-col items-center py-12 gap-6">
-                <div className="w-36 h-52 bg-slate-800/50 rounded-lg border border-slate-700 flex flex-col items-center justify-center relative overflow-hidden">
-                  <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50" />
-                  <Battery className="text-slate-500 mb-2" size={40} />
-                  <span className="text-[10px] text-slate-500 font-mono">LITHIUM ION</span>
-                </div>
-              </div>
-            }
-          />
-
-          {/* 4. Main Logic Board */}
-          <Layer 
-            zOffset={0.8} 
-            label="A16 Bionic Logic Board" 
-            color="rgba(6, 78, 59, 0.85)"
-            icon={Cpu}
-            content={
-              <div className="w-full h-full relative">
-                {/* CPU */}
-                <div className="absolute top-12 right-6 w-16 h-16 bg-amber-500/10 border border-amber-500/40 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-                    <div className="w-8 h-8 bg-amber-500/80 rounded opacity-50" />
-                </div>
-                {/* RAM Modules */}
-                <div className="absolute top-36 left-6 w-10 h-28 bg-emerald-900/50 border border-emerald-500/30 rounded flex flex-col gap-1 p-1">
-                   {[1,2,3,4].map(i => <div key={i} className="flex-1 bg-emerald-500/20 rounded-sm" />)}
-                </div>
-                {/* Traces */}
-                <svg className="absolute inset-0 w-full h-full stroke-emerald-400/30" style={{strokeWidth: 1.5}}>
-                    <path d="M30,30 L80,30 L80,80 M150,150 L180,150 L180,250" fill="none" strokeDasharray="4 4" />
-                </svg>
-              </div>
-            }
-          />
-
-          {/* 5. Camera Module */}
-          <Layer 
-            zOffset={1.5} 
-            label="Triple Lens Array" 
-            color="#0f172a" 
-            icon={Aperture}
-            content={
-               <div className="absolute top-6 left-6 w-full">
-                 <div className="flex flex-wrap gap-3 w-32">
-                   {[1,2,3].map(i => (
-                     <div key={i} className="w-12 h-12 rounded-full bg-black border-4 border-slate-700 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden group">
-                       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                       <div className="w-4 h-4 rounded-full bg-indigo-900 shadow-inner" />
-                     </div>
-                   ))}
-                 </div>
-               </div>
-            }
-          />
-
-          {/* 6. Screen */}
-          <Layer 
-            zOffset={2.5} 
-            label="Super Retina XDR Display" 
-            color="rgba(23, 37, 84, 0.3)" 
-            icon={Maximize}
-            content={
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-500/5 to-transparent relative overflow-hidden">
-                 {/* Screen Glare */}
-                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                 <div className="text-center space-y-1">
-                   <div className="text-6xl font-thin text-white/90 tracking-tighter">12:45</div>
-                   <div className="text-xs text-blue-200/60 font-medium uppercase tracking-widest">Wednesday, Nov 21</div>
-                 </div>
-              </div>
-            }
-          />
-        </div>
-      </div>
-
-      {/* --- CONTROLS FOOTER --- */}
-      <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-md px-6 z-50 transition-all duration-700 ${appState === 'interactive' ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-2 shadow-2xl ring-1 ring-black/50">
-          <div className="flex items-center gap-5 px-6 py-4">
-            
-            {/* Label Left */}
-            <div className="flex flex-col items-center gap-1.5 w-14">
-              <Box size={20} className="text-slate-500" />
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Solid</span>
-            </div>
-            
-            {/* MAIN SLIDER */}
-            <div className="flex-1 relative h-12 flex items-center group cursor-pointer">
-              {/* Track */}
-              <div className="absolute inset-x-0 h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                <div 
-                  className="h-full bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-500 transition-all duration-100 ease-out" 
-                  style={{ width: `${explode * 100}%` }} 
-                />
-              </div>
-              
-              {/* Hidden Input */}
-              <input 
-                type="range" 
-                min="0" 
-                max="1" 
-                step="0.005" 
-                value={explode} 
-                onChange={(e) => setExplode(parseFloat(e.target.value))}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
-              />
-              
-              {/* Visual Handle */}
-              <div 
-                className="absolute w-6 h-6 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.4)] border-[3px] border-blue-500 pointer-events-none transition-all duration-100 ease-out z-10"
-                style={{ left: `calc(${explode * 100}% - 12px)` }} 
-              >
-                <div className="absolute inset-0 rounded-full bg-blue-500 opacity-0 group-hover:opacity-20 animate-ping" />
-              </div>
-            </div>
-
-            {/* Label Right */}
-            <div className="flex flex-col items-center gap-1.5 w-14">
-              <Layers size={20} className="text-blue-400" />
-              <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Exploded</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="text-center mt-6 flex items-center justify-center gap-2 opacity-60">
-           <Info size={14} className="text-blue-400" /> 
-           <span className="text-xs text-slate-400 font-medium">Click & Drag to rotate 3D model</span>
-        </div>
-      </div>
-
-      {/* --- GLOBAL STYLES --- */}
-      <style>{`
-        .perspective-1000 {
-          perspective: 1000px;
-        }
-        /* Hide scrollbar */
-        ::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
+      {view === 'analyzing' && (
+        <AnalyzingView logs={analysisLog} />
+      )}
+      
+      {view === 'guide' && (
+        <GuideView 
+          step={MOCK_API_RESPONSE.steps[currentStep]}
+          currentStepIndex={currentStep}
+          totalSteps={MOCK_API_RESPONSE.steps.length}
+          onNext={() => setCurrentStep(Math.min(MOCK_API_RESPONSE.steps.length - 1, currentStep + 1))}
+          onPrev={() => setCurrentStep(Math.max(0, currentStep - 1))}
+          onShowTools={() => setShowTools(true)}
+        />
+      )}
     </div>
   );
 }
-
-// Helper for icons in JSX
-interface ZapProps {
-  className?: string;
-  size?: number;
-}
-
-const Zap = ({ className, size }: ZapProps) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-  </svg>
-);
