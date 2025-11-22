@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Hammer,
   Upload,
-  Scan
+  Scan,
+  Home
 } from 'lucide-react';
 
 /**
@@ -21,52 +22,6 @@ import {
  * * Visual Style & Upload Logic: Adapted from your 'Explode Anything' tool (page.tsx).
  * * Core Logic: RepairLens Workflow (Upload -> Diagnosis -> Analysis -> Guide).
  */
-
-// --- MOCK DATA ---
-const MOCK_API_RESPONSE = {
-  device_name: "Breville Barista Express",
-  difficulty: "Moderate",
-  source: "Gemini-Generative",
-  tools_needed: ["Torx T20 Driver", "Spudger", "Phillips #2"],
-  steps: [
-    {
-      step_number: 1,
-      title: "Remove Water Reservoir",
-      instruction: "Lift the water tank vertically to disengage the bottom valve. Set it aside to prevent spills.",
-      warning: "Ensure machine is unplugged.",
-      mask_id: "tank",
-      overlay: { type: "arrow_up", x: 50, y: 30 }
-    },
-    {
-      step_number: 2,
-      title: "Locate Rear Screws",
-      instruction: "Identify the two T20 Torx screws hidden beneath the tank rim. These hold the top panel in place.",
-      tools_needed: ["Torx T20 Driver"],
-      mask_id: "screws",
-      overlay: { type: "highlight", x: 50, y: 45 }
-    },
-    {
-      step_number: 3,
-      title: "Pry Top Panel",
-      instruction: "Insert a spudger into the seam between the top panel and the side chassis. Gently leverage upwards to release the plastic clips.",
-      warning: "Plastic clips are fragile.",
-      tools_needed: ["Spudger"],
-      mask_id: "panel",
-      overlay: { type: "motion_pry", x: 60, y: 40 }
-    }
-  ]
-};
-
-const ANALYSIS_TIMELINE = [
-  { msg: "Sending image to Vision Engine...", delay: 500 },
-  { msg: "Gemini 2.5: Identifying object as 'Espresso Machine'...", delay: 1500 },
-  { msg: "LangGraph: Checking iFixit API for guides...", delay: 2500 },
-  { msg: "iFixit: No exact match found (404).", delay: 3500 },
-  { msg: "LangGraph: Rerouting to Generative Brain...", delay: 4000 },
-  { msg: "Gemini: Deducing disassembly steps...", delay: 5500 },
-  { msg: "SAM 3: Generating segmentation masks for 3 parts...", delay: 7000 },
-  { msg: "Compiling AR Scene Graph...", delay: 8000 },
-];
 
 // --- SUB-COMPONENTS ---
 
@@ -236,9 +191,10 @@ interface GuideViewProps {
   onNext: () => void;
   onPrev: () => void;
   onShowTools: () => void;
+  onReset: () => void;
 }
 
-const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools }: GuideViewProps) => {
+const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onReset }: GuideViewProps) => {
   const step = repairData.steps[currentStepIndex];
   const totalSteps = repairData.steps.length;
 
@@ -268,9 +224,22 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools }
             </div>
           </div>
         </div>
-        <button onClick={onShowTools} className="p-2 hover:bg-slate-800 rounded-full text-slate-400">
-          <Hammer size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={onReset} 
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
+            title="Start new repair"
+          >
+            <Home size={20} />
+          </button>
+          <button 
+            onClick={onShowTools} 
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
+            title="View tools"
+          >
+            <Hammer size={20} />
+          </button>
+        </div>
       </header>
 
       {/* AR Workspace */}
@@ -402,33 +371,26 @@ export default function App() {
     setError(null);
 
     try {
-      // Initial log
-      addAnalysisLog('Uploading image to RepairLens Brain...');
-
-      // Make API call
-      const response = await repairService.analyze({
-        file: uploadedFile,
-        user_prompt: userDescription,
-      });
-
-      // Stream reasoning logs to UI
-      if (response.reasoning_log && response.reasoning_log.length > 0) {
-        for (let i = 0; i < response.reasoning_log.length; i++) {
-          setTimeout(() => {
-            addAnalysisLog(response.reasoning_log[i]);
-          }, (i + 1) * 800);
+      // Use streaming API for real-time log updates
+      const response = await repairService.analyzeStreaming(
+        {
+          file: uploadedFile,
+          user_prompt: userDescription,
+        },
+        (logMessage: string) => {
+          // This callback fires for each log in real-time
+          addAnalysisLog(logMessage);
         }
-      }
+      );
 
       // Save result
       setRepairData(response);
 
-      // Transition to guide view
-      const totalDelay = (response.reasoning_log.length + 1) * 800 + 1000;
+      // Transition to guide view after a brief moment
       setTimeout(() => {
         setIsAnalyzing(false);
         setCurrentView('guide');
-      }, totalDelay);
+      }, 1000);
 
     } catch (err: any) {
       const error = err as ApiError;
@@ -470,6 +432,16 @@ export default function App() {
           }
           onPrev={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
           onShowTools={() => setShowTools(true)}
+          onReset={() => {
+            // Reset all state and go back to upload
+            setCurrentView('upload');
+            setUploadedImage(null, null);
+            setUserDescription('');
+            setRepairData(null);
+            clearAnalysisLogs();
+            setCurrentStepIndex(0);
+            setError(null);
+          }}
         />
       )}
     </div>

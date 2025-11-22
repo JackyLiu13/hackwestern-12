@@ -1,5 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.responses import StreamingResponse
 from typing import Optional
+import json
+import asyncio
 from app.services.reasoning_brain import RepairBrain
 from app.services.vision_engine import VisionEngine
 from app.models.schemas import RepairResponse, SegmentationResponse
@@ -31,6 +34,40 @@ async def analyze_object(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/analyze-stream")
+async def analyze_stream(
+    file: UploadFile = File(...),
+    user_prompt: Optional[str] = Form(None)
+):
+    """
+    Streaming version of analyze endpoint.
+    Sends logs in real-time via Server-Sent Events (SSE).
+    """
+    async def generate():
+        try:
+            # Read image bytes
+            image_data = await file.read()
+            
+            # Process with streaming logs
+            async for event in brain.process_request_streaming(image_data, user_prompt):
+                # Send SSE formatted data
+                yield f"data: {json.dumps(event)}\n\n"
+                await asyncio.sleep(0.01)  # Small delay for client processing
+                
+        except Exception as e:
+            error_event = {"type": "error", "data": str(e)}
+            yield f"data: {json.dumps(error_event)}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
 
 @router.post("/segment", response_model=SegmentationResponse)
 async def segment_parts(file: UploadFile = File(...)):
