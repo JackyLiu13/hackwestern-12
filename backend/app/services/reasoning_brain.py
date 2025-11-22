@@ -1,6 +1,7 @@
 import os
 import json
 import io
+import asyncio
 from typing import Dict, TypedDict, List, Any, Optional
 from PIL import Image
 import google.generativeai as genai
@@ -201,6 +202,65 @@ class RepairBrain:
         safety = ["Unplug device before opening", "Capacitor discharge risk"]
         return {"repair_steps": generated_steps, "safety_warnings": safety}
 
+    async def polish_all_steps(self, steps: List[Dict]) -> List[Dict]:
+        """
+        Polishes all repair steps in ONE batch request to avoid rate limits.
+        Makes steps more concise and user-friendly.
+        """
+        if not self.model or not steps:
+            return steps
+        
+        try:
+            # Build a structured list of steps for the prompt
+            steps_text = []
+            for i, step in enumerate(steps):
+                step_entry = f"Step {step.get('step', i+1)}: {step.get('instruction', '')}"
+                if step.get('warning'):
+                    step_entry += f" [WARNING: {step.get('warning')}]"
+                steps_text.append(step_entry)
+            
+            prompt = f"""
+            Rewrite these repair instructions to be CONCISE, clear, and user-friendly. Make them SHORTER.
+            
+            Original steps:
+            {chr(10).join(steps_text)}
+            
+            Guidelines for EACH step:
+            - Make it SHORTER and more direct than original
+            - Use simple, clear language
+            - Remove unnecessary details  
+            - One sentence if possible, max two
+            - Keep essential safety info in warnings only
+            - No fluff, no encouragement, just clear actions
+            
+            Output valid JSON array matching this format:
+            [
+                {{"step": 1, "instruction": "Brief clear instruction", "warning": "Brief warning or null"}},
+                {{"step": 2, "instruction": "Brief clear instruction", "warning": null}}
+            ]
+            
+            Return exactly {len(steps)} steps in the same order.
+            """
+            
+            response = self.model.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json"}
+            )
+            
+            polished_steps = json.loads(response.text)
+            
+            # Validate we got the right number of steps
+            if len(polished_steps) != len(steps):
+                print(f"Warning: Expected {len(steps)} steps, got {len(polished_steps)}. Using originals.")
+                return steps
+            
+            return polished_steps
+            
+        except Exception as e:
+            print(f"Failed to polish steps in batch: {e}")
+            # On error, return originals
+            return steps
+
     async def process_request(self, image_data: bytes, user_prompt: Optional[str] = None):
         """
         Orchestrates the flow with CoT.
@@ -227,10 +287,15 @@ class RepairBrain:
         
         if state.get("is_verified"):
             self._log(state, "Path A Selected: Using Official Guide.")
+            # Polish iFixit steps for user-friendliness
+            self._log(state, "Polishing steps for clarity and user-friendliness...")
+            polished_steps = await self.polish_all_steps(state["repair_steps"])
+            self._log(state, f"Successfully polished {len(polished_steps)} steps.")
+            
             return {
                 "source": "iFixit",
                 "device": state["target_device"],
-                "steps": state["repair_steps"],
+                "steps": polished_steps,
                 "safety": ["Follow official guide strictly."],
                 "guides_available": state.get("guides_available"),
                 "reasoning_log": state["reasoning_log"]
@@ -239,10 +304,94 @@ class RepairBrain:
             self._log(state, "Path B Selected: Generative AI Mode.")
             # 3. Generate (Path B)
             state.update(await self.generative_reasoning_node(state))
+            
+            # Polish AI-generated steps for user-friendliness
+            self._log(state, "Polishing steps for clarity and user-friendliness...")
+            polished_steps = await self.polish_all_steps(state["repair_steps"])
+            self._log(state, f"Successfully polished {len(polished_steps)} steps.")
+            
             return {
                 "source": "AI_Reasoning",
                 "device": state["target_device"],
-                "steps": state["repair_steps"],
+                "steps": polished_steps,
                 "safety": state["safety_warnings"],
                 "reasoning_log": state["reasoning_log"]
             }
+
+    async def process_request_streaming(self, image_data: bytes, user_prompt: Optional[str] = None):
+        """
+        Streaming version that yields events as processing happens.
+        Yields: {"type": "log", "data": "message"} or {"type": "result", "data": {...}}
+        """
+        state: RepairState = {
+            "image_bytes": image_data,
+            "user_prompt": user_prompt,
+            "reasoning_log": [],
+            "detected_objects": [],
+            "target_device": "",
+            "is_verified": False,
+            "repair_steps": [],
+            "safety_warnings": [],
+            "guides_available": []
+        }
+        
+        def stream_log(message: str):
+            """Helper to log and yield event"""
+            print(f"Brain: {message}")
+            state['reasoning_log'].append(message)
+            return {"type": "log", "data": message}
+        
+        yield stream_log("Starting Repair Analysis Session.")
+        
+        # 1. Scene Analysis & Target Lock
+        yield stream_log(f"Analyzing scene. User Context: '{user_prompt or 'No context'}'")
+        scene_result = await self.analyze_scene_node(state)
+        state.update(scene_result)
+        
+        if state.get("target_device"):
+            yield stream_log(f"Target Lock: {state['target_device']}")
+        
+        # 2. Check Verified (Path A)
+        yield stream_log(f"Searching iFixit for '{state['target_device']}'...")
+        ifixit_result = await self.ifixit_check_node(state)
+        state.update(ifixit_result)
+        
+        if state.get("is_verified"):
+            yield stream_log("Path A Selected: Using Official Guide.")
+            yield stream_log(f"Found {len(state.get('guides_available', []))} verified guides.")
+            yield stream_log("Polishing steps for clarity...")
+            
+            polished_steps = await self.polish_all_steps(state["repair_steps"])
+            yield stream_log(f"Successfully polished {len(polished_steps)} steps.")
+            
+            result = {
+                "source": "iFixit",
+                "device": state["target_device"],
+                "steps": polished_steps,
+                "safety": ["Follow official guide strictly."],
+                "guides_available": state.get("guides_available"),
+                "reasoning_log": state["reasoning_log"]
+            }
+            yield {"type": "result", "data": result}
+        else:
+            yield stream_log("Path B Selected: Generative AI Mode.")
+            yield stream_log("Engaging AI reasoning...")
+            
+            # 3. Generate (Path B)
+            gen_result = await self.generative_reasoning_node(state)
+            state.update(gen_result)
+            yield stream_log(f"Generated {len(state['repair_steps'])} repair steps.")
+            
+            # Polish AI-generated steps
+            yield stream_log("Polishing steps for clarity...")
+            polished_steps = await self.polish_all_steps(state["repair_steps"])
+            yield stream_log(f"Successfully polished {len(polished_steps)} steps.")
+            
+            result = {
+                "source": "AI_Reasoning",
+                "device": state["target_device"],
+                "steps": polished_steps,
+                "safety": state["safety_warnings"],
+                "reasoning_log": state["reasoning_log"]
+            }
+            yield {"type": "result", "data": result}
