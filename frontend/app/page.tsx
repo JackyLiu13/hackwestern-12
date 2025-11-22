@@ -10,8 +10,11 @@ import {
   ArrowRight,
   Hammer,
   Upload,
-  Scan
+  Scan,
+  Download
 } from 'lucide-react';
+import { generatePDF } from '@/lib/pdfGenerator';
+import { Step, RepairGuide } from '@/types/repair';
 
 /**
  * REPAIRLENS - HYBRID IMPLEMENTATION
@@ -20,7 +23,7 @@ import {
  */
 
 // --- MOCK DATA ---
-const MOCK_API_RESPONSE = {
+const MOCK_API_RESPONSE: RepairGuide = {
   device_name: "Breville Barista Express",
   difficulty: "Moderate",
   source: "Gemini-Generative",
@@ -227,16 +230,6 @@ const AnalyzingView = ({ logs }: AnalyzingViewProps) => (
 );
 
 // 4. Guide View - The interactive AR steps
-interface Step {
-  step_number: number;
-  title: string;
-  instruction: string;
-  warning?: string;
-  mask_id: string;
-  overlay: { type: string; x: number; y: number };
-  tools_needed?: string[];
-}
-
 interface GuideViewProps {
   step: Step;
   currentStepIndex: number;
@@ -244,9 +237,10 @@ interface GuideViewProps {
   onNext: () => void;
   onPrev: () => void;
   onShowTools: () => void;
+  onDownloadPDF: () => void;
 }
 
-const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowTools }: GuideViewProps) => {
+const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowTools, onDownloadPDF }: GuideViewProps) => {
   return (
     <div className="flex flex-col h-screen bg-slate-950 animate-in fade-in duration-500">
       {/* Header */}
@@ -263,9 +257,18 @@ const GuideView = ({ step, currentStepIndex, totalSteps, onNext, onPrev, onShowT
             </div>
           </div>
         </div>
-        <button onClick={onShowTools} className="p-2 hover:bg-slate-800 rounded-full text-slate-400">
-          <Hammer size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={onDownloadPDF}
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
+            title="Download PDF Guide"
+          >
+            <Download size={20} />
+          </button>
+          <button onClick={onShowTools} className="p-2 hover:bg-slate-800 rounded-full text-slate-400" title="View Tools">
+            <Hammer size={20} />
+          </button>
+        </div>
       </header>
 
       {/* AR Workspace */}
@@ -445,6 +448,7 @@ export default function App() {
           onNext={() => setCurrentStep(Math.min(MOCK_API_RESPONSE.steps.length - 1, currentStep + 1))}
           onPrev={() => setCurrentStep(Math.max(0, currentStep - 1))}
           onShowTools={() => setShowTools(true)}
+          onDownloadPDF={() => generatePDF(MOCK_API_RESPONSE)}
         />
       )}
     </div>
