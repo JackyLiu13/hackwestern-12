@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { repairService } from '@/lib/api/repairService';
+import { reconstructionService } from '@/lib/api/reconstructionService';
 import type { ApiError, RepairResponse } from '@/lib/api/types';
 import { 
   Wrench, 
@@ -15,10 +16,12 @@ import {
   Upload,
   Scan,
   Download,
-  Home
+  Home,
+  Box
 } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfGenerator';
 import { Step, RepairGuide } from '@/types/repair';
+import { PLYViewer } from '@/components/PLYViewer';
 
 /**
  * REPAIRLENS - HYBRID IMPLEMENTATION
@@ -196,9 +199,11 @@ interface GuideViewProps {
   onShowTools: () => void;
   onDownloadPDF: () => void;
   onReset: () => void;
+  onGenerate3D?: () => void;
+  isGenerating3D?: boolean;
 }
 
-const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onDownloadPDF, onReset }: GuideViewProps) => {
+const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onDownloadPDF, onReset, onGenerate3D, isGenerating3D }: GuideViewProps) => {
   const step = repairData.steps[currentStepIndex];
   const totalSteps = repairData.steps.length;
 
@@ -236,6 +241,20 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
           >
             <Download size={20} />
           </button>
+          {onGenerate3D && (
+            <button 
+              onClick={onGenerate3D}
+              disabled={isGenerating3D}
+              className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-purple-400 disabled:opacity-50 transition-colors"
+              title="Generate 3D Model (SAM 3D)"
+            >
+              {isGenerating3D ? (
+                <div className="w-5 h-5 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+              ) : (
+                <Box size={20} />
+              )}
+            </button>
+          )}
           <button 
             onClick={onReset} 
             className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
@@ -343,6 +362,9 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
 
 export default function App() {
   const [showTools, setShowTools] = useState(false);
+  const [show3DViewer, setShow3DViewer] = useState(false);
+  const [plyUrl, setPlyUrl] = useState<string | null>(null);
+  const [isGenerating3D, setIsGenerating3D] = useState(false);
 
   // Use Zustand store
   const {
@@ -412,6 +434,29 @@ export default function App() {
     }
   };
 
+  const generate3DModel = async () => {
+    if (!uploadedFile) {
+      setError('No image available for 3D reconstruction');
+      return;
+    }
+
+    setIsGenerating3D(true);
+    try {
+      addAnalysisLog('Generating 3D model with SAM 3D...');
+      const plyBlob = await reconstructionService.reconstruct3D(uploadedFile);
+      const url = reconstructionService.blobToUrl(plyBlob);
+      setPlyUrl(url);
+      setShow3DViewer(true);
+      addAnalysisLog('✓ 3D model generated successfully');
+    } catch (err: any) {
+      console.error('3D reconstruction error:', err);
+      setError('Failed to generate 3D model. Make sure SAM 3D checkpoints are installed.');
+      addAnalysisLog(`✗ 3D generation failed: ${err.message}`);
+    } finally {
+      setIsGenerating3D(false);
+    }
+  };
+
   return (
     <div className="bg-[#09090b] min-h-screen text-white font-sans selection:bg-blue-500/30">
       {currentView === 'upload' && (
@@ -452,6 +497,8 @@ export default function App() {
               warning: s.warning || undefined,
             })),
           })}
+          onGenerate3D={generate3DModel}
+          isGenerating3D={isGenerating3D}
           onReset={() => {
             // Reset all state and go back to upload
             setCurrentView('upload');
@@ -461,6 +508,25 @@ export default function App() {
             clearAnalysisLogs();
             setCurrentStepIndex(0);
             setError(null);
+            if (plyUrl) {
+              reconstructionService.revokeUrl(plyUrl);
+              setPlyUrl(null);
+            }
+          }}
+        />
+      )}
+
+      {/* 3D Model Viewer */}
+      {show3DViewer && plyUrl && (
+        <PLYViewer 
+          plyUrl={plyUrl}
+          title={repairData ? `3D Model - ${repairData.device}` : '3D Model'}
+          onClose={() => {
+            setShow3DViewer(false);
+            if (plyUrl) {
+              reconstructionService.revokeUrl(plyUrl);
+              setPlyUrl(null);
+            }
           }}
         />
       )}
