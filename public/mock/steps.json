@@ -1,0 +1,5 @@
+[
+  { "id": 1, "title": "Base Component", "description": "Place the base component on a flat surface.", "image": "/mock/step1.png" },
+  { "id": 2, "title": "Attach Panels", "description": "Align Panel B with the base and attach it securely.", "image": "/mock/step2.png" },
+  { "id": 3, "title": "Add Screws", "description": "Insert screws into the marked holes.", "image": "/mock/step3.png" }
+]
