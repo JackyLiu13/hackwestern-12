@@ -4,12 +4,12 @@ import { useAppStore } from '@/store/useAppStore';
 import { repairService } from '@/lib/api/repairService';
 import type { ApiError, RepairResponse } from '@/lib/api/types';
 import { HammerBackground } from '@/components/3d/HammerBackground';
-import { 
-  AlertTriangle, 
-  CheckCircle2, 
-  ChevronRight, 
-  ChevronLeft, 
-  Cpu, 
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  ChevronLeft,
+  Cpu,
   Upload,
   Scan,
   Download,
@@ -56,7 +56,7 @@ const UploadView = ({ onImageSelect }: UploadViewProps) => {
     <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)] animate-in fade-in duration-500">
       {/* 3D Hammer Background */}
       <HammerBackground />
-      
+
       {/* Header */}
       <header className="relative z-10 px-8 py-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -81,7 +81,7 @@ const UploadView = ({ onImageSelect }: UploadViewProps) => {
           onChange={handleFileSelect}
           className="hidden"
         />
-        <button 
+        <button
           onClick={handleUploadClick}
           className="px-20 py-4 text-[var(--color-text-primary)] rounded-4xl text-lg transition-all cursor-pointer border-2 border-dashed border-[var(--color-border-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 flex items-center gap-3"
         >
@@ -107,8 +107,8 @@ const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysi
   <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)] animate-in slide-in-from-right duration-500">
     {/* Header with Home button */}
     <header className="relative z-10 px-8 py-6 flex items-center justify-between">
-      <button 
-        onClick={onHome} 
+      <button
+        onClick={onHome}
         className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-dark)] transition-colors"
         title="Start new repair"
       >
@@ -118,54 +118,54 @@ const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysi
 
     <div className="flex-1 flex items-center justify-center px-6">
       <div className="max-w-md w-full space-y-8">
-      
-      {/* Image Preview Card */}
-      <div className="relative w-full aspect-video bg-[var(--color-bg-tertiary)] rounded-2xl overflow-hidden border border-[var(--color-border-secondary)] shadow-2xl group">
-        {image && <img src={image} alt="Broken Item" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
-          <div className="flex items-center gap-2 text-[var(--color-success-light)] mb-1">
-            <CheckCircle2 size={16} />
-            <span className="text-xs font-bold uppercase tracking-wider">Image Captured</span>
+
+        {/* Image Preview Card */}
+        <div className="relative w-full aspect-video bg-[var(--color-bg-tertiary)] rounded-2xl overflow-hidden border border-[var(--color-border-secondary)] shadow-2xl group">
+          {image && <img src={image} alt="Broken Item" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
+            <div className="flex items-center gap-2 text-[var(--color-success-light)] mb-1">
+              <CheckCircle2 size={16} />
+              <span className="text-xs font-bold uppercase tracking-wider">Image Captured</span>
+            </div>
           </div>
-        </div>
-        <button 
-          onClick={onReplaceImage} 
-          className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/70 text-[var(--color-text-primary)] transition-colors"
-          title="Replace image"
-        >
-          <Upload size={16} />
-        </button>
-      </div>
-
-      {/* Input Section */}
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">What seems to be the problem?</h2>
-          <p className="text-[var(--color-text-tertiary)] text-sm">Describe the issue to help Gemini diagnose the mechanics.</p>
+          <button
+            onClick={onReplaceImage}
+            className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/70 text-[var(--color-text-primary)] transition-colors"
+            title="Replace image"
+          >
+            <Upload size={16} />
+          </button>
         </div>
 
-        <textarea 
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder="e.g. The steam wand is loose and leaking..."
-          autoFocus
-          className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-primary)] rounded-xl p-4 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent focus:outline-none resize-none h-32 transition-all"
-        />
+        {/* Input Section */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">What seems to be the problem?</h2>
+            <p className="text-[var(--color-text-tertiary)] text-sm">Describe the issue to help Gemini diagnose the mechanics.</p>
+          </div>
 
-        <button 
-          onClick={onStartAnalysis}
-          disabled={!description.trim()}
-          className={`
+          <textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            placeholder="e.g. The steam wand is loose and leaking..."
+            autoFocus
+            className="w-full bg-[var(--color-bg-input)] border border-[var(--color-border-primary)] rounded-xl p-4 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent focus:outline-none resize-none h-32 transition-all"
+          />
+
+          <button
+            onClick={onStartAnalysis}
+            disabled={!description.trim()}
+            className={`
             w-full py-4 rounded-4xl text-lg transition-all flex items-center justify-center gap-3
             ${description.trim()
-              ? 'border-2 border-dashed border-[var(--color-border-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 text-[var(--color-text-primary)] cursor-pointer' 
-              : 'border-2 border-dashed border-[var(--color-border-primary)]/50 text-[var(--color-text-disabled)] cursor-not-allowed opacity-[var(--opacity-disabled)]'}
+                ? 'border-2 border-dashed border-[var(--color-border-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 text-[var(--color-text-primary)] cursor-pointer'
+                : 'border-2 border-dashed border-[var(--color-border-primary)]/50 text-[var(--color-text-disabled)] cursor-not-allowed opacity-[var(--opacity-disabled)]'}
           `}
-        >
-          <Scan size={20} />
-          Analyze & Fix
-        </button>
-      </div>
+          >
+            <Scan size={20} />
+            Analyze & Fix
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -181,8 +181,8 @@ const AnalyzingView = ({ logs, onHome }: AnalyzingViewProps) => (
   <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)]">
     {/* Header with Home button */}
     <header className="relative z-10 px-8 py-6 flex items-center justify-between">
-      <button 
-        onClick={onHome} 
+      <button
+        onClick={onHome}
         className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-light)] transition-colors"
         title="Start new repair"
       >
@@ -193,26 +193,26 @@ const AnalyzingView = ({ logs, onHome }: AnalyzingViewProps) => (
     <div className="flex-1 flex items-center justify-center">
       <div className="w-80 space-y-8 text-center">
         <div className="relative w-32 h-32 mx-auto">
-           <div className="absolute inset-0 border-4 border-[var(--color-primary)]/20 rounded-full animate-[spin_3s_linear_infinite]" />
-           <div className="absolute inset-0 border-t-4 border-[var(--color-primary)] rounded-full animate-[spin_1s_linear_infinite]" />
-           <div className="absolute inset-0 flex items-center justify-center">
-              <Cpu className="w-10 h-10 text-[var(--color-primary-light)] animate-pulse" />
-           </div>
+          <div className="absolute inset-0 border-4 border-[var(--color-primary)]/20 rounded-full animate-[spin_3s_linear_infinite]" />
+          <div className="absolute inset-0 border-t-4 border-[var(--color-primary)] rounded-full animate-[spin_1s_linear_infinite]" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Cpu className="w-10 h-10 text-[var(--color-primary-light)] animate-pulse" />
+          </div>
         </div>
-        
+
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-[var(--color-text-primary)]">Generating Repair Guide</h3>
-          
+
           {/* Log Stream */}
           <div className="h-32 overflow-hidden relative mask-linear-fade">
-             <div className="space-y-3 flex flex-col items-center">
-               {[...logs].reverse().map((log, i) => (
-                 <div key={i} className="flex items-center gap-3 text-xs animate-in slide-in-from-bottom-2 fade-in duration-300">
-                   <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? 'bg-[var(--color-primary-light)] animate-pulse' : 'bg-[var(--color-border-primary)]'}`} />
-                   <span className={i === 0 ? 'text-[var(--color-primary-pale)] font-medium' : 'text-[var(--color-text-muted)]'}>{log}</span>
-                 </div>
-               ))}
-             </div>
+            <div className="space-y-3 flex flex-col items-center">
+              {[...logs].reverse().map((log, i) => (
+                <div key={i} className="flex items-center gap-3 text-xs animate-in slide-in-from-bottom-2 fade-in duration-300">
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? 'bg-[var(--color-primary-light)] animate-pulse' : 'bg-[var(--color-border-primary)]'}`} />
+                  <span className={i === 0 ? 'text-[var(--color-primary-pale)] font-medium' : 'text-[var(--color-text-muted)]'}>{log}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -235,7 +235,7 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
   // Determine current view content based on step index
   // Index -1: Safety Screen
   // Index 0+: Repair Steps
-  
+
   const isSafetyScreen = currentStepIndex === -1;
   const step = isSafetyScreen ? null : repairData.steps[currentStepIndex];
   const totalSteps = repairData.steps.length;
@@ -275,15 +275,15 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={onDownloadPDF}
             className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
             title="Download PDF Guide"
           >
             <Download size={20} />
           </button>
-          <button 
-            onClick={onReset} 
+          <button
+            onClick={onReset}
             className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-light)] transition-colors"
             title="Start new repair"
           >
@@ -295,119 +295,137 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
       {/* Workspace */}
       <div className="flex-1 relative overflow-hidden bg-black group">
         <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-bg-tertiary)]">
-            {/* 2D Placeholder View */}
+          {isSafetyScreen ? (
+            // --- SAFETY SCREEN ---
             <div className="text-center space-y-4">
-          <div className="relative w-64 h-80 bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] shadow-2xl transform transition-all duration-700 ease-out">
-             {/* Generic Machine Shapes */}
-             <div className="absolute bottom-0 w-full h-24 bg-[var(--color-border-primary)] rounded-b-lg" /> 
-             <div className="absolute top-0 w-full h-12 bg-[var(--color-bg-tertiary)] rounded-t-lg flex justify-center pt-2">
-                <div className="w-32 h-2 bg-[var(--color-text-disabled)] rounded-full" />
-             </div>
-             <div className="absolute top-12 left-4 w-12 h-32 bg-[var(--color-bg-tertiary)] rounded" />
-             <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-[var(--color-bg-tertiary)]" />
+              <div className="relative w-64 h-80 bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border-primary)] shadow-2xl transform transition-all duration-700 ease-out">
+                {/* Generic Machine Shapes */}
+                <div className="absolute bottom-0 w-full h-24 bg-[var(--color-border-primary)] rounded-b-lg" />
+                <div className="absolute top-0 w-full h-12 bg-[var(--color-bg-tertiary)] rounded-t-lg flex justify-center pt-2">
+                  <div className="w-32 h-2 bg-[var(--color-text-disabled)] rounded-full" />
+                </div>
+                <div className="absolute top-12 left-4 w-12 h-32 bg-[var(--color-bg-tertiary)] rounded" />
+                <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-[var(--color-bg-tertiary)]" />
               </div>
               <p className="text-[var(--color-text-tertiary)] text-sm">Placeholder for future 3D view</p>
-          </div>
-        ) : (
-          // --- STEP SCREEN ---
-          <>
-            <div className="flex-1 relative">
-               <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
-                 {/* Placeholder for 3D view - can be enhanced with segmentation masks later */}
-                 <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
+            </div>
+          ) : (
+            // --- STEP SCREEN ---
+            <>
+              <div className="flex-1 relative">
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+                  {/* Placeholder for 3D view - can be enhanced with segmentation masks later */}
+                  <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
                     {/* Generic Machine Shapes */}
-                    <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" /> 
+                    <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" />
                     <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
-                       <div className="w-32 h-2 bg-slate-500 rounded-full" />
+                      <div className="w-32 h-2 bg-slate-500 rounded-full" />
                     </div>
                     <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
                     <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
-                 </div>
-               </div>
-            </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Instructions Panel */}
       <div className="bg-[var(--color-bg-tertiary)] border-t border-[var(--color-border-secondary)] p-6 pb-8 space-y-6 rounded-t-3xl -mt-6 relative z-10">
-         <div className="w-12 h-1 bg-[var(--color-border-primary)] rounded-full mx-auto mb-2" />
-         
-         <div className="space-y-4">
-           <div className="flex items-start justify-between">
-             <div>
-               <span className="text-[var(--color-primary)] text-xs font-bold tracking-wider uppercase mb-1 block">
-                 Step {step.step}
-               </span>
-               <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
-                 {step.instruction}
-               </h2>
-             </div>
-           </div>
+        <div className="w-12 h-1 bg-[var(--color-border-primary)] rounded-full mx-auto mb-2" />
 
-           {step.warning && (
-             <div className="bg-[var(--color-warning-bg)] border border-[var(--color-warning-border)] p-3 rounded-lg flex gap-3 items-start">
-               <AlertTriangle className="text-[var(--color-warning)] shrink-0 mt-0.5" size={16} />
-               <p className="text-[var(--color-warning-pale)] text-sm">{step.warning}</p>
-             </div>
-           )}
+        {isSafetyScreen ? (
+          // Safety Screen Content
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-red-500 text-xs font-bold tracking-wider uppercase mb-1 block">
+                  Safety First
+                </span>
+                <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
+                  Read Before You Begin
+                </h2>
+              </div>
+            </div>
 
-           {/* Safety warnings - show on first step */}
-           {currentStepIndex === 0 && repairData.safety.length > 0 && (
-             <div className="bg-[var(--color-error-bg)] border border-[var(--color-error-border)] p-3 rounded-lg">
-               <h3 className="text-[var(--color-error-light)] font-bold text-sm mb-2">Safety Precautions:</h3>
-               <ul className="text-[var(--color-error-pale)] text-sm space-y-1">
-                 {repairData.safety.map((warning, i) => (
-                   <li key={i}>• {warning}</li>
-                 ))}
-               </ul>
-             </div>
-           )}
-         </div>
+            <div className="bg-[var(--color-error-bg)] border border-[var(--color-error-border)] p-4 rounded-lg">
+              <h3 className="text-[var(--color-error-light)] font-bold text-sm mb-3">Safety Precautions:</h3>
+              <ul className="text-[var(--color-error-pale)] text-sm space-y-2">
+                {repairData.safety.map((warning, i) => (
+                  <li key={i}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          // Step Screen Content
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[var(--color-primary)] text-xs font-bold tracking-wider uppercase mb-1 block">
+                  Step {step.step}
+                </span>
+                <h2 className="text-xl font-bold text-[var(--color-text-primary)]">
+                  {step.instruction}
+                </h2>
+              </div>
+            </div>
+
+            {step.warning && (
+              <div className="bg-[var(--color-warning-bg)] border border-[var(--color-warning-border)] p-3 rounded-lg flex gap-3 items-start">
+                <AlertTriangle className="text-[var(--color-warning)] shrink-0 mt-0.5" size={16} />
+                <p className="text-[var(--color-warning-pale)] text-sm">{step.warning}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Navigation Footer */}
       <div className="bg-slate-900 border-t border-slate-800 p-4 pb-8">
-         <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
-           <button 
-             onClick={onPrev}
-             disabled={currentStepIndex === 0}
-             className="p-4 rounded-full border-2 border-dashed border-[var(--color-border-primary)] disabled:opacity-[var(--opacity-disabled)] disabled:border-[var(--color-border-primary)]/50 text-[var(--color-text-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 transition-all"
-           >
-             <ChevronLeft size={24} />
-           </button>
-           
-           <div className="flex gap-1.5">
-             {/* Safety Dot */}
-             <div 
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  currentStepIndex === -1 ? 'bg-red-500' : 'bg-slate-700'
-                }`} 
-             />
-             {/* Step Dots */}
-             {repairData.steps.map((_, i) => (
-               <div 
-                 key={i} 
-                 className={`w-2 h-2 rounded-full transition-colors ${
-                   i === currentStepIndex ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border-primary)]'
-                 }`} 
-               />
-             ))}
-           </div>
+        <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
+          <button
+            onClick={onPrev}
+            disabled={currentStepIndex === 0}
+            className="p-4 rounded-full border-2 border-dashed border-[var(--color-border-primary)] disabled:opacity-[var(--opacity-disabled)] disabled:border-[var(--color-border-primary)]/50 text-[var(--color-text-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 transition-all"
+          >
+            <ChevronLeft size={24} />
+          </button>
 
-           {currentStepIndex === totalSteps - 1 ? (
-             <button 
-               onClick={onReset}
-               className="px-6 py-4 rounded-full bg-[var(--color-success)] hover:bg-[var(--color-success-light)] text-[var(--color-text-primary)] font-bold transition-colors shadow-lg flex items-center gap-2"
-             >
-               <CheckCircle2 size={20} />
-               I fixed it!
-             </button>
-           ) : (
-             <button 
-               onClick={onNext}
-               className="p-4 rounded-full border-2 border-dashed border-[var(--color-border-primary)] text-[var(--color-text-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 transition-all"
-             >
-               <ChevronRight size={24} />
-             </button>
-           )}
-         </div>
+          <div className="flex gap-1.5">
+            {/* Safety Dot */}
+            <div
+              className={`w-2 h-2 rounded-full transition-colors ${currentStepIndex === -1 ? 'bg-red-500' : 'bg-slate-700'
+                }`}
+            />
+            {/* Step Dots */}
+            {repairData.steps.map((_, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors ${i === currentStepIndex ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border-primary)]'
+                  }`}
+              />
+            ))}
+          </div>
+
+          {currentStepIndex === totalSteps - 1 ? (
+            <button
+              onClick={onReset}
+              className="px-6 py-4 rounded-full bg-[var(--color-success)] hover:bg-[var(--color-success-light)] text-[var(--color-text-primary)] font-bold transition-colors shadow-lg flex items-center gap-2"
+            >
+              <CheckCircle2 size={20} />
+              I fixed it!
+            </button>
+          ) : (
+            <button
+              onClick={onNext}
+              className="p-4 rounded-full border-2 border-dashed border-[var(--color-border-primary)] text-[var(--color-text-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 transition-all"
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -439,7 +457,7 @@ export default function App() {
       setLightPos((prev) => {
         const dx = targetPosRef.current.x - prev.x;
         const dy = targetPosRef.current.y - prev.y;
-        
+
         // Smooth easing with lag
         return {
           x: prev.x + dx * 0.1,
@@ -555,7 +573,7 @@ export default function App() {
           }}
         />
       )}
-      
+
       {/* Hidden file input shared across views */}
       <input
         ref={fileInputRef}
@@ -570,7 +588,7 @@ export default function App() {
       )}
 
       {currentView === 'diagnosis' && (
-        <DiagnosisView 
+        <DiagnosisView
           image={uploadedImage}
           description={userDescription}
           onDescriptionChange={setUserDescription}
@@ -579,9 +597,9 @@ export default function App() {
           onHome={() => setCurrentView('upload')}
         />
       )}
-      
+
       {currentView === 'analyzing' && (
-        <AnalyzingView 
+        <AnalyzingView
           logs={analysisLogs}
           onHome={() => {
             setCurrentView('upload');
@@ -592,12 +610,12 @@ export default function App() {
           }}
         />
       )}
-      
+
       {currentView === 'guide' && repairData && (
-        <GuideView 
+        <GuideView
           repairData={repairData}
           currentStepIndex={currentStepIndex}
-          onNext={() => 
+          onNext={() =>
             setCurrentStepIndex(
               Math.min(repairData.steps.length - 1, currentStepIndex + 1)
             )
@@ -606,7 +624,7 @@ export default function App() {
           onShowTools={() => setShowTools(true)}
           onDownloadPDF={() => {
             if (!repairData) return;
-            
+
             // Map RepairResponse to RepairGuide for PDF generation
             const guideForPDF: RepairGuide = {
               device_name: repairData.device,
