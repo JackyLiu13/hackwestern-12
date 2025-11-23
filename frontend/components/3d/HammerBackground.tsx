@@ -1,17 +1,17 @@
 'use client';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 // Custom sine curve for the claw
 class CustomSinCurve extends THREE.Curve<THREE.Vector3> {
   scale: number;
-  
+
   constructor(scale = 1) {
     super();
     this.scale = scale;
   }
-  
+
   getPoint(t: number, optionalTarget = new THREE.Vector3()) {
     const tx = t * 2 - 1;
     const ty = Math.sin(t * Math.PI * 0.5);
@@ -20,9 +20,78 @@ class CustomSinCurve extends THREE.Curve<THREE.Vector3> {
   }
 }
 
+const BlinkingLight = ({ position, color }: { position: [number, number, number], color: string }) => {
+  const lightRef = useRef<THREE.PointLight>(null);
+  const spriteRef = useRef<THREE.Sprite>(null);
+
+  // Create glow texture
+  const glowTexture = React.useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)'); // White center
+      gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)'); // White-ish
+      gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)'); // Fade out
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparent
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 128, 128);
+    }
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    const intensity = (Math.sin(t * 8) + 1) * 0.5; // 0 to 1
+
+    if (lightRef.current) {
+      // Blink intensity between 20 and 100
+      lightRef.current.intensity = intensity * 80 + 20;
+      lightRef.current.color.set(color);
+    }
+
+    if (spriteRef.current) {
+      // Pulse scale and opacity
+      const scale = intensity * 0.5 + 1.5; // 1.5 to 2.0
+      spriteRef.current.scale.set(scale, scale, scale);
+      spriteRef.current.material.opacity = intensity * 0.5 + 0.3;
+      spriteRef.current.material.color.set(color);
+    }
+  });
+
+  return (
+    <group position={position}>
+      <pointLight
+        ref={lightRef}
+        color={color}
+        distance={5}
+        decay={2}
+      />
+      <sprite ref={spriteRef}>
+        <spriteMaterial
+          map={glowTexture}
+          transparent
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          color={color}
+        />
+      </sprite>
+    </group>
+  );
+};
+
+interface HammerProps {
+  onPartClick?: () => void;
+  glowColor: string;
+}
+
 // Hammer component
-const Hammer = () => {
+const Hammer = ({ onPartClick, glowColor }: HammerProps) => {
   const groupRef = useRef<THREE.Group>(null);
+  const [isLit, setIsLit] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   // Create chrome material - brighter version with blue tint
   const chromeMaterial = new THREE.MeshPhysicalMaterial({
@@ -70,6 +139,20 @@ const Hammer = () => {
     }
   });
 
+  useEffect(() => {
+    document.body.style.cursor = hovered ? 'pointer' : 'auto';
+    return () => {
+      document.body.style.cursor = 'auto';
+    };
+  }, [hovered]);
+
+  const handleClawClick = (e: any) => {
+    e.stopPropagation();
+    console.log('🔨 Hammer claw clicked!');
+    // setIsLit(!isLit); // We don't need local toggle anymore if it's controlled by step
+    onPartClick?.();
+  };
+
   return (
     <group ref={groupRef} rotation={[0, 0, Math.PI / 4]} position={[-1.5, 0, 0]}>
       {/* Handle */}
@@ -91,7 +174,20 @@ const Hammer = () => {
       </mesh>
 
       {/* Head Center */}
-      <mesh position={[0, 2.2, 0]} castShadow receiveShadow>
+      <mesh
+        position={[0, 2.2, 0]}
+        castShadow
+        receiveShadow
+        onClick={handleClawClick}
+        onPointerOver={() => {
+          console.log('Hovering over head');
+          setHovered(true);
+        }}
+        onPointerOut={() => {
+          console.log('Left head');
+          setHovered(false);
+        }}
+      >
         <boxGeometry args={[1.4, 1.8, 1.0]} />
         <primitive object={chromeMaterial} attach="material" />
       </mesh>
@@ -126,17 +222,50 @@ const Hammer = () => {
         <primitive object={chromeMaterial} attach="material" />
       </mesh>
 
-      {/* Claw Tip 1 */}
-      <mesh position={[-3.2, 2.6, 0.15]} rotation={[0, 0.2, 0.8]} castShadow>
+      {/* Claw Tip 1 - Interactive */}
+      <mesh
+        position={[-3.2, 2.6, 0.15]}
+        rotation={[0, 0.2, 0.8]}
+        castShadow
+        onClick={handleClawClick}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+      >
         <boxGeometry args={[0.6, 0.2, 0.4]} />
         <primitive object={chromeMaterial} attach="material" />
       </mesh>
 
-      {/* Claw Tip 2 */}
-      <mesh position={[-3.2, 2.6, -0.15]} rotation={[0, -0.2, 0.8]} castShadow>
+      {/* Claw Tip 2 - Interactive */}
+      <mesh
+        position={[-3.2, 2.6, -0.15]}
+        rotation={[0, -0.2, 0.8]}
+        castShadow
+        onClick={handleClawClick}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+      >
         <boxGeometry args={[0.6, 0.2, 0.4]} />
         <primitive object={chromeMaterial} attach="material" />
       </mesh>
+
+      {/* Invisible Hitbox for easier clicking on the claw area */}
+      <mesh
+        position={[-3.2, 2.6, 0]}
+        visible={false}
+        onClick={handleClawClick}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+      >
+        <boxGeometry args={[2.5, 2.5, 2.5]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
+      {/* Blinking Orange Light on Claw Tips */}
+      <BlinkingLight position={[-3.2, 2.6, 0]} color={glowColor} />
+
+      {/* Extra light when clicked */}
+      {/* We can remove the extra static light and rely on the BlinkingLight which is now intense */}
+
     </group>
   );
 };
@@ -189,7 +318,7 @@ const Wrench = () => {
     const outerRadius = 0.6;
     const innerRadius = 0.4;
     const numPoints = 12;
-    
+
     for (let i = 0; i < numPoints * 2; i++) {
       const angle = (i / (numPoints * 2)) * Math.PI * 2;
       const radius = i % 2 === 0 ? outerRadius : innerRadius;
@@ -199,7 +328,7 @@ const Wrench = () => {
       else starShape.lineTo(x, y);
     }
     starShape.closePath();
-    
+
     return new THREE.ExtrudeGeometry(starShape, { depth: 0.25, bevelEnabled: false });
   }, []);
 
@@ -280,7 +409,7 @@ const Particles = () => {
 };
 
 // Scene content with mouse tracking
-const SceneContent = () => {
+const SceneContent = ({ onPartClick, glowColor }: { onPartClick?: () => void, glowColor: string }) => {
   const groupRef = useRef<THREE.Group>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
   const targetRotationRef = useRef({ x: 0, y: 0 });
@@ -314,19 +443,41 @@ const SceneContent = () => {
 
   return (
     <group ref={groupRef}>
-      <Hammer />
+      <Hammer onPartClick={onPartClick} glowColor={glowColor} />
       <Wrench />
     </group>
   );
 };
 
+interface HammerBackgroundProps {
+  onPartClick?: () => void;
+  step?: number;
+}
+
 // Main component
-export const HammerBackground: React.FC = () => {
+export const HammerBackground: React.FC<HammerBackgroundProps> = ({
+  onPartClick,
+  step = 0
+}) => {
+
+  // Determine glow color based on step
+  const getGlowColor = () => {
+    switch (step) {
+      case 1: return '#ef4444'; // Red
+      case 2: return '#eab308'; // Yellow
+      case 3: return '#22c55e'; // Green
+      default: return '#FFA500'; // Orange (Default)
+    }
+  };
+
+  const glowColor = getGlowColor();
+
   return (
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0">
       <Canvas
         shadows
         camera={{ position: [0, 0, 12], fov: 45 }}
+        style={{ pointerEvents: 'all' }}
         gl={{
           antialias: true,
           alpha: false,
@@ -347,6 +498,7 @@ export const HammerBackground: React.FC = () => {
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
         />
+
         <spotLight
           position={[-5, 10, -5]}
           angle={Math.PI / 6}
@@ -355,14 +507,14 @@ export const HammerBackground: React.FC = () => {
           color={0x88ccff}
           castShadow
         />
+
         <pointLight position={[0, -5, 5]} intensity={3} color={0xff88cc} />
         <pointLight position={[5, 5, -5]} intensity={2} color={0x88ffcc} />
         <hemisphereLight args={[0x88ccff, 0xff88cc, 1]} />
 
-        <SceneContent />
+        <SceneContent onPartClick={onPartClick} glowColor={glowColor} />
         <Particles />
       </Canvas>
     </div>
   );
 };
-
