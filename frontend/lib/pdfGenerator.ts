@@ -117,9 +117,28 @@ export function generatePDF(guide: RepairGuide, deviceImage?: string | null): bo
        // Calculate height of text block
        const textBlockHeight = textLines.length * 6; // Approximate height per line
        // Calculate centered Y position. jsPDF text baseline is approx bottom, so add correction.
-       const textY = y + (boxHeight / 2) - (textBlockHeight / 2) + 3; 
+       const textY = y + (boxHeight / 2) - (textBlockHeight / 2) + 5; // Adjusted offset
        
-       doc.text(textLines, margin + 20, textY);
+       // Center text horizontally
+       // For each line, calculate x position
+       textLines.forEach((line: string, i: number) => {
+         // Use doc.getStringUnitWidth to get width, then scale by font size
+         const textW = doc.getStringUnitWidth(line) * 11 / doc.internal.scaleFactor * 2.8; 
+         // A simpler way in jsPDF is to use 'align: center' in text options, but we need x coordinate.
+         // Actually, let's use the align option.
+         
+         // Wait, splitTextToSize returns lines that fit width.
+         // If we want centered text, we should just use doc.text with align: center at the midpoint of the box.
+       });
+       
+       // Since we have multiple lines from splitTextToSize, standard align:center might treat the whole block.
+       // Let's retry with simple text placement.
+       
+       // Box center X
+       const boxCenterX = margin + (contentWidth / 2);
+       
+       // We must pass the text lines and use align: 'center'
+       doc.text(textLines, boxCenterX, textY, { align: 'center' });
 
        return boxHeight;
     };
@@ -280,8 +299,32 @@ export function generatePDF(guide: RepairGuide, deviceImage?: string | null): bo
       doc.setTextColor(0, 0, 0); 
       
       // Split instruction into sentences for bullet points
-      // Filter out empty strings from split
-      const sentences = step.instruction.match(/[^.!?]+[.!?]+/g) || [step.instruction];
+      // Regex Lookbehind is not fully supported in all JS environments, so we use a safer split.
+      // We split by period/question/exclamation followed by space or end of line.
+      // We then try to merge back common abbreviations if needed, but a simple robust way is:
+      // Match sequence of characters ending in punctuation, followed by space/EOF.
+      
+      // This regex matches a sentence: non-punctuation chars, followed by optional punctuation, 
+      // but checks that the period isn't part of a known abbreviation like e.g. or i.e. is hard with simple regex.
+      // Instead, let's use a simpler heuristic: Split, then rejoin if it looks like an abbreviation.
+      
+      let sentences = step.instruction.match( /[^.!?]+[.!?]+(\s|$)/g );
+      
+      if (!sentences) {
+          sentences = [step.instruction];
+      } else {
+          // Post-processing to fix common abbreviation splits (e.g., i.e.)
+          for (let i = 0; i < sentences.length - 1; i++) {
+              const current = sentences[i].trim();
+              // Check if ends with short abbreviation pattern (like "e.g." or "approx.")
+              // If the sentence is very short (<= 4 chars) or ends in "e.g." "i.e.", merge with next.
+              if (/(e\.g\.|i\.e\.|vs\.|etc\.)$/i.test(current) || current.length <= 3) {
+                  sentences[i] = sentences[i] + sentences[i+1];
+                  sentences.splice(i + 1, 1);
+                  i--; // re-check this new merged sentence
+              }
+          }
+      }
       
       sentences.forEach((sentence) => {
          const cleanSentence = sentence.trim();

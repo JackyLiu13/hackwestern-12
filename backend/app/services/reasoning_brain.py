@@ -204,34 +204,35 @@ class RepairBrain:
 
     async def polish_all_steps(self, steps: List[Dict]) -> List[Dict]:
         """
-        Polishes all repair steps in ONE batch request to avoid rate limits.
-        Makes steps more concise and user-friendly.
+        Polishes all repair steps in ONE batch request.
         """
         if not self.model or not steps:
             return steps
         
         try:
+            # If there are too many steps (e.g. > 30), just return originals to avoid context limits
+            if len(steps) > 30:
+                print(f"Skipping polish: Too many steps ({len(steps)})")
+                return steps
+
             # Build a structured list of steps for the prompt
             steps_text = []
             for i, step in enumerate(steps):
-                step_entry = f"Step {step.get('step', i+1)}: {step.get('instruction', '')}"
+                instruction = step.get('instruction', '')
+                # Truncate very long instructions to save tokens
+                if len(instruction) > 500: 
+                    instruction = instruction[:500] + "..."
+                    
+                step_entry = f"Step {step.get('step', i+1)}: {instruction}"
                 if step.get('warning'):
                     step_entry += f" [WARNING: {step.get('warning')}]"
                 steps_text.append(step_entry)
             
             prompt = f"""
-            Rewrite these repair instructions to be CONCISE, clear, and user-friendly. Make them SHORTER.
+            Rewrite these repair instructions to be CONCISE, clear, and user-friendly.
             
             Original steps:
             {chr(10).join(steps_text)}
-            
-            Guidelines for EACH step:
-            - Make it SHORTER and more direct than original
-            - Use simple, clear language
-            - Remove unnecessary details  
-            - One sentence if possible, max two
-            - Keep essential safety info in warnings only
-            - No fluff, no encouragement, just clear actions
             
             Output valid JSON array matching this format:
             [
@@ -239,7 +240,7 @@ class RepairBrain:
                 {{"step": 2, "instruction": "Brief clear instruction", "warning": null}}
             ]
             
-            Return exactly {len(steps)} steps in the same order.
+            Return exactly {len(steps)} steps.
             """
             
             response = self.model.generate_content(
