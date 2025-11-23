@@ -12,9 +12,12 @@ import {
   Cpu, 
   Upload,
   Scan,
+  Download,
   Home,
   Camera
 } from 'lucide-react';
+import { generatePDF } from '@/lib/pdfGenerator';
+import { Step, RepairGuide } from '@/types/repair';
 
 /**
  * REPAIRLENS - HYBRID IMPLEMENTATION
@@ -226,10 +229,11 @@ interface GuideViewProps {
   onNext: () => void;
   onPrev: () => void;
   onShowTools: () => void;
+  onDownloadPDF: () => void;
   onReset: () => void;
 }
 
-const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onReset }: GuideViewProps) => {
+const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onDownloadPDF, onReset }: GuideViewProps) => {
   const step = repairData.steps[currentStepIndex];
   const totalSteps = repairData.steps.length;
 
@@ -256,7 +260,14 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">        
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={onDownloadPDF}
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-blue-400 transition-colors"
+            title="Download PDF Guide"
+          >
+            <Download size={20} />
+          </button>
           <button 
             onClick={onReset} 
             className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-light)] transition-colors"
@@ -553,6 +564,22 @@ export default function App() {
           }
           onPrev={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
           onShowTools={() => setShowTools(true)}
+          onDownloadPDF={() => {
+            if (!repairData) return;
+            
+            // Map RepairResponse to RepairGuide for PDF generation
+            const guideForPDF: RepairGuide = {
+              device_name: repairData.device,
+              steps: repairData.steps.map(s => ({
+                step_number: s.step,
+                title: `Step ${s.step}`,
+                instruction: s.instruction,
+                warning: s.warning || undefined,
+              })),
+              safety: repairData.safety // Pass safety data
+            };
+            generatePDF(guideForPDF, uploadedImage);
+          }}
           onReset={() => {
             // Reset all state and go back to upload
             setCurrentView('upload');
