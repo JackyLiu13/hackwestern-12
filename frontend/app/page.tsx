@@ -17,7 +17,7 @@ import {
   Camera
 } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfGenerator';
-import { Step, RepairGuide } from '@/types/repair';
+import { RepairGuide } from '@/types/repair';
 
 /**
  * REPAIRLENS - HYBRID IMPLEMENTATION
@@ -107,10 +107,9 @@ const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysi
   <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)] animate-in slide-in-from-right duration-500">
     {/* Header with Home button */}
     <header className="relative z-10 px-8 py-6 flex items-center justify-between">
-      <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Diagnosis</h2>
       <button 
         onClick={onHome} 
-        className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-light)] transition-colors"
+        className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-dark)] transition-colors"
         title="Start new repair"
       >
         <Home size={20} />
@@ -157,10 +156,10 @@ const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysi
           onClick={onStartAnalysis}
           disabled={!description.trim()}
           className={`
-            w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all
+            w-full py-4 rounded-4xl text-lg transition-all flex items-center justify-center gap-3
             ${description.trim()
-              ? 'bg-[var(--color-primary-dark)] hover:bg-[var(--color-primary)] text-[var(--color-text-primary)] shadow-lg shadow-[var(--shadow-primary)]' 
-              : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-disabled)] cursor-not-allowed'}
+              ? 'border-2 border-dashed border-[var(--color-border-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 text-[var(--color-text-primary)] cursor-pointer' 
+              : 'border-2 border-dashed border-[var(--color-border-primary)]/50 text-[var(--color-text-disabled)] cursor-not-allowed opacity-[var(--opacity-disabled)]'}
           `}
         >
           <Scan size={20} />
@@ -182,7 +181,6 @@ const AnalyzingView = ({ logs, onHome }: AnalyzingViewProps) => (
   <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)]">
     {/* Header with Home button */}
     <header className="relative z-10 px-8 py-6 flex items-center justify-between">
-      <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Analyzing</h2>
       <button 
         onClick={onHome} 
         className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-light)] transition-colors"
@@ -249,13 +247,12 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
           <div>
             <h1 className="text-sm font-bold text-[var(--color-text-primary)] leading-tight">{repairData.device}</h1>
             <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-tertiary)]">
-              <span className={`px-1.5 py-0.5 rounded border ${
-                repairData.source === 'iFixit' 
-                  ? 'bg-[var(--color-success-bg)] text-[var(--color-success)] border-[var(--color-success-border)]'
-                  : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20'
-              }`}>
-                "{repairData.source}"
-              </span>
+              {repairData.source === 'iFixit' && (
+                <span className="px-1.5 py-0.5 rounded border-2 border-dashed border-[var(--color-border-primary)] text-[var(--color-text-primary)] flex items-center gap-1">
+                  <CheckCircle2 size={10} className="text-[var(--color-success)]" />
+                  {repairData.source}-verified Guide
+                </span>
+              )}
               <span>• {totalSteps} Steps</span>
             </div>
           </div>
@@ -338,7 +335,7 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
            <button 
              onClick={onPrev}
              disabled={currentStepIndex === 0}
-             className="p-4 rounded-full bg-[var(--color-bg-elevated)] disabled:opacity-[var(--opacity-disabled)] text-[var(--color-text-primary)] hover:bg-[var(--color-border-primary)] transition-colors"
+             className="p-4 rounded-full border-2 border-dashed border-[var(--color-border-primary)] disabled:opacity-[var(--opacity-disabled)] disabled:border-[var(--color-border-primary)]/50 text-[var(--color-text-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 transition-all"
            >
              <ChevronLeft size={24} />
            </button>
@@ -365,7 +362,7 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
            ) : (
              <button 
                onClick={onNext}
-               className="p-4 rounded-full bg-[var(--color-primary-dark)] text-[var(--color-text-primary)] hover:bg-[var(--color-primary)] transition-colors shadow-lg shadow-[var(--shadow-primary)]"
+               className="p-4 rounded-full border-2 border-dashed border-[var(--color-border-primary)] text-[var(--color-text-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 transition-all"
              >
                <ChevronRight size={24} />
              </button>
