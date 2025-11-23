@@ -6,7 +6,7 @@ from google import genai
 load_dotenv()
 
 # 2. Initialize the client
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 print("Testing gemini-2.5-flash...")
 

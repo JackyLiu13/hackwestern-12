@@ -1,8 +1,9 @@
 import google.generativeai as genai
 import os
 
-# 1. Setup your key (Hardcode it here for this test to be safe)
-api_key = "AIzaSyC1wwyuzSBBFu8BvuF8KJ3lMmXKvbwUWdw"
+# 1. Setup Client
+load_dotenv()
+api_key = os.environ.get("GOOGLE_API_KEY")
 # OR uncomment the line below and paste your key if the env var isn't working
 # api_key = "YOUR_ACTUAL_API_KEY_HERE"
 
