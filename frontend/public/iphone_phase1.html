@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>iPhone 15 Repair - Phase 1: Gathering Tools</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+            color: #333;
+        }
+
+        #instructions {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #sub-instructions {
+            font-size: 1em;
+            color: #555;
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .tool-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <div id="instructions">Phase 1: Gathering Tools & Parts</div>
+        <div id="sub-instructions">
+            <strong>Parts:</strong> iPhone 15 Screen, Adhesive.<br>
+            <strong>Tools:</strong> P2 Pentalobe, Y000 Tri-point, PH000 Phillips, Heat Gun, Suction Cup, Picks, Spudger,
+            Tweezers, Magnetic Mat.
+        </div>
+    </div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf5f5f7); // Apple-ish light gray
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 150, 150);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50); dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048); scene.add(dirLight);
+
+        // Table
+        const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 300), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
+
+        // Materials
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.2 });
+        const plasticBlue = new THREE.MeshStandardMaterial({ color: 0x007aff, roughness: 0.5 });
+        const plasticBlack = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
+        const screenMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.5 });
+        const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff9500 });
+
+        // Helper Functions
+        function createScrewdriver(color, x, z) {
+            const group = new THREE.Group();
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 30, 16), new THREE.MeshStandardMaterial({ color: color }));
+            handle.rotation.x = Math.PI / 2;
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 20, 8), metalMat);
+            shaft.rotation.x = Math.PI / 2; shaft.position.z = -25;
+            group.add(handle); group.add(shaft);
+            group.position.set(x, 2, z);
+            scene.add(group);
+        }
+
+        function createPick(x, z) {
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0); shape.lineTo(5, 10); shape.lineTo(-5, 10); shape.lineTo(0, 0);
+            const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+            const mesh = new THREE.Mesh(geo, plasticBlue);
+            mesh.rotation.x = -Math.PI / 2; mesh.position.set(x, 1, z);
+            scene.add(mesh);
+        }
+
+        // --- TOOLS LAYOUT ---
+
+        // Screwdrivers
+        createScrewdriver(0xff3b30, -50, -20); // P2 (Redish)
+        createScrewdriver(0x007aff, -50, 0);   // Y000 (Blueish)
+        createScrewdriver(0x34c759, -50, 20);  // PH000 (Greenish)
+
+        // Suction Cup
+        const suctionGroup = new THREE.Group();
+        const cup = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xdddddd, transparent: true, opacity: 0.8 }));
+        cup.scale.y = 0.5;
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 15), plasticBlack);
+        handle.position.y = 5;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(5, 1, 16, 32), metalMat);
+        ring.position.y = 12; ring.rotation.y = Math.PI / 2;
+        suctionGroup.add(cup); suctionGroup.add(handle); suctionGroup.add(ring);
+        suctionGroup.position.set(0, 0, -50);
+        scene.add(suctionGroup);
+
+        // Spudger
+        const spudger = new THREE.Mesh(new THREE.BoxGeometry(40, 2, 4), plasticBlack);
+        spudger.position.set(0, 1, 50);
+        scene.add(spudger);
+
+        // Picks
+        createPick(20, 40); createPick(30, 45); createPick(25, 55);
+
+        // Heat Gun (Simplified)
+        const heatGun = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 40), orangeMat);
+        const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 10), metalMat);
+        nozzle.rotation.x = Math.PI / 2; nozzle.position.z = -25;
+        const hgHandle = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 25), orangeMat);
+        hgHandle.rotation.x = Math.PI / 3; hgHandle.position.set(0, -10, 10);
+        heatGun.add(body); heatGun.add(nozzle); heatGun.add(hgHandle);
+        heatGun.position.set(60, 10, -30); heatGun.rotation.y = -Math.PI / 4;
+        scene.add(heatGun);
+
+        // Replacement Screen
+        const screenGeo = new THREE.BoxGeometry(35, 2, 70); // Approx iPhone size scaled
+        const screen = new THREE.Mesh(screenGeo, screenMat);
+        screen.position.set(-100, 2, 0);
+        scene.add(screen);
+
+        // Magnetic Mat
+        const mat = new THREE.Mesh(new THREE.PlaneGeometry(80, 100), new THREE.MeshStandardMaterial({ color: 0xffffff, map: null })); // White grid ideally
+        mat.rotation.x = -Math.PI / 2; mat.position.set(100, 0.1, 50);
+
+        // Grid lines for mat
+        const grid = new THREE.GridHelper(80, 10, 0xcccccc, 0xcccccc);
+        grid.position.set(100, 0.2, 50);
+        scene.add(mat); scene.add(grid);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    </script>
+</body>
+
+</html>

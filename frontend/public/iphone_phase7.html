@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>iPhone 15 Repair - Phase 7: Closing Up</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+            color: #333;
+        }
+
+        #instructions {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #sub-instructions {
+            font-size: 1em;
+            color: #555;
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <div id="instructions">Phase 7: Closing Up</div>
+        <div id="sub-instructions">
+            1. Reinstall Connector Cover.<br>
+            2. <strong>Align Top Clips</strong> first.<br>
+            3. Press down firmly to seal.<br>
+            4. Reinstall Pentalobe screws.
+        </div>
+    </div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf5f5f7);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 100, 100);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50); dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Materials
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e });
+        const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+
+        // Phone Body
+        const body = new THREE.Mesh(new THREE.BoxGeometry(35, 4, 70), bodyMat);
+        body.position.y = -2;
+        scene.add(body);
+
+        // Screen (Pivot at Top for Clips)
+        const screenGroup = new THREE.Group();
+        const scMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 1, 70), screenMat);
+        scMesh.position.set(0, 0, 35); // Offset so pivot is at Z=-35 (Top)
+        screenGroup.add(scMesh);
+        screenGroup.position.set(0, 0.5, -35); // Pivot at Top Edge
+        scene.add(screenGroup);
+
+        // Screws
+        const screwGeo = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
+        const s1 = new THREE.Mesh(screwGeo, metalMat); s1.rotation.x = Math.PI / 2; s1.position.set(-5, -2, 35 + 5);
+        const s2 = new THREE.Mesh(screwGeo, metalMat); s2.rotation.x = Math.PI / 2; s2.position.set(5, -2, 35 + 5);
+        scene.add(s1); scene.add(s2);
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.02;
+
+            // 1. Screen Lowers (Top Clips engaged, pivoting down)
+            if (time < 3) {
+                // Start rotated up
+                const startRot = -Math.PI / 6; // 30 deg up
+                const endRot = 0;
+                const t = Math.min(time / 3, 1);
+                screenGroup.rotation.x = startRot * (1 - t);
+            }
+            // 2. Screws Enter
+            else if (time < 5) {
+                const t = Math.min((time - 3) / 2, 1);
+                s1.position.z = 40 - (t * 5); // Move to 35
+                s2.position.z = 40 - (t * 5);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    </script>
+</body>
+
+</html>

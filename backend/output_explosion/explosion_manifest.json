@@ -1,0 +1,71 @@
+{
+  "original_image": "./app/sample/broken_iphone.jpg",
+  "parts": [
+    {
+      "id": "mock_top_assembly",
+      "mesh_url": "./output_explosion/mock_top_assembly.glb",
+      "original_bbox": [
+        0,
+        0,
+        10,
+        10
+      ],
+      "transforms": {
+        "origin": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "explode_to": {
+          "x": 0,
+          "y": 0,
+          "z": 50
+        }
+      }
+    },
+    {
+      "id": "mock_battery",
+      "mesh_url": "./output_explosion/mock_battery.glb",
+      "original_bbox": [
+        0,
+        0,
+        10,
+        10
+      ],
+      "transforms": {
+        "origin": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "explode_to": {
+          "x": 0,
+          "y": 0,
+          "z": 50
+        }
+      }
+    },
+    {
+      "id": "mock_chassis",
+      "mesh_url": "./output_explosion/mock_chassis.glb",
+      "original_bbox": [
+        0,
+        0,
+        10,
+        10
+      ],
+      "transforms": {
+        "origin": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "explode_to": {
+          "x": 0,
+          "y": 0,
+          "z": 50
+        }
+      }
+    }
+  ]
+}
