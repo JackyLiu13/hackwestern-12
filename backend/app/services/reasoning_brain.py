@@ -6,6 +6,7 @@ from typing import Dict, TypedDict, List, Any, Optional
 from PIL import Image
 import google.generativeai as genai
 from app.services.ifixit_client import iFixitClient
+from app.services.trellis_service import generate_exploded_model_url
 from app.core.config import settings
 
 class RepairState(TypedDict):
@@ -283,6 +284,11 @@ class RepairBrain:
         # 1. Scene Analysis & Target Lock
         state.update(await self.analyze_scene_node(state))
         
+        # Kick off exploded-view 3D model generation in parallel (once we know device name)
+        trellis_task = asyncio.create_task(
+            asyncio.to_thread(generate_exploded_model_url, state["image_bytes"], state["target_device"])
+        )
+        
         # 2. Check Verified (Path A)
         state.update(await self.ifixit_check_node(state))
         
@@ -293,30 +299,38 @@ class RepairBrain:
             polished_steps = await self.polish_all_steps(state["repair_steps"])
             self._log(state, f"Successfully polished {len(polished_steps)} steps.")
             
+            model_url = await trellis_task
+            
             return {
                 "source": "iFixit",
                 "device": state["target_device"],
                 "steps": polished_steps,
                 "safety": ["Follow official guide strictly."],
                 "guides_available": state.get("guides_available"),
-                "reasoning_log": state["reasoning_log"]
+                "reasoning_log": state["reasoning_log"],
+                "model_url": model_url,
             }
         else:
             self._log(state, "Path B Selected: Generative AI Mode.")
             # 3. Generate (Path B)
-            state.update(await self.generative_reasoning_node(state))
+            self._log(state, "Engaging Generative Repair Logic while 3D model renders...")
+            gen_result = await self.generative_reasoning_node(state)
+            state.update(gen_result)
             
             # Polish AI-generated steps for user-friendliness
             self._log(state, "Polishing steps for clarity and user-friendliness...")
             polished_steps = await self.polish_all_steps(state["repair_steps"])
             self._log(state, f"Successfully polished {len(polished_steps)} steps.")
             
+            model_url = await trellis_task
+            
             return {
                 "source": "AI_Reasoning",
                 "device": state["target_device"],
                 "steps": polished_steps,
                 "safety": state["safety_warnings"],
-                "reasoning_log": state["reasoning_log"]
+                "reasoning_log": state["reasoning_log"],
+                "model_url": model_url,
             }
 
     async def process_request_streaming(self, image_data: bytes, user_prompt: Optional[str] = None):
@@ -352,6 +366,12 @@ class RepairBrain:
         if state.get("target_device"):
             yield stream_log(f"Target Lock: {state['target_device']}")
         
+        # Kick off exploded-view 3D model generation in parallel (once we know device name)
+        yield stream_log("Launching exploded 3D model generation in parallel...")
+        trellis_task = asyncio.create_task(
+            asyncio.to_thread(generate_exploded_model_url, state["image_bytes"], state["target_device"])
+        )
+        
         # 2. Check Verified (Path A)
         yield stream_log(f"Searching iFixit for '{state['target_device']}'...")
         ifixit_result = await self.ifixit_check_node(state)
@@ -365,13 +385,16 @@ class RepairBrain:
             polished_steps = await self.polish_all_steps(state["repair_steps"])
             yield stream_log(f"Successfully polished {len(polished_steps)} steps.")
             
+            model_url = await trellis_task
+            
             result = {
                 "source": "iFixit",
                 "device": state["target_device"],
                 "steps": polished_steps,
                 "safety": ["Follow official guide strictly."],
                 "guides_available": state.get("guides_available"),
-                "reasoning_log": state["reasoning_log"]
+                "reasoning_log": state["reasoning_log"],
+                "model_url": model_url,
             }
             yield {"type": "result", "data": result}
         else:
@@ -379,6 +402,7 @@ class RepairBrain:
             yield stream_log("Engaging AI reasoning...")
             
             # 3. Generate (Path B)
+            yield stream_log("Generating repair steps while 3D exploded model renders...")
             gen_result = await self.generative_reasoning_node(state)
             state.update(gen_result)
             yield stream_log(f"Generated {len(state['repair_steps'])} repair steps.")
@@ -388,11 +412,14 @@ class RepairBrain:
             polished_steps = await self.polish_all_steps(state["repair_steps"])
             yield stream_log(f"Successfully polished {len(polished_steps)} steps.")
             
+            model_url = await trellis_task
+            
             result = {
                 "source": "AI_Reasoning",
                 "device": state["target_device"],
                 "steps": polished_steps,
                 "safety": state["safety_warnings"],
-                "reasoning_log": state["reasoning_log"]
+                "reasoning_log": state["reasoning_log"],
+                "model_url": model_url,
             }
             yield {"type": "result", "data": result}

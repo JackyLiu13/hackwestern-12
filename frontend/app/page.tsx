@@ -1,9 +1,12 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { repairService } from '@/lib/api/repairService';
 import type { ApiError, RepairResponse } from '@/lib/api/types';
 import { HammerBackground } from '@/components/3d/HammerBackground';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { useGLTF, OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -21,6 +24,24 @@ import {
 } from 'lucide-react';
 import { generatePDF } from '@/lib/pdfGenerator';
 import { RepairGuide } from '@/types/repair';
+// --- 3D MODEL VIEWER (Exploded View) ---
+const ExplodedModel: React.FC<{ url: string }> = ({ url }) => {
+  const { scene } = useGLTF(url);
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = clock.getElapsedTime() * 0.25;
+    }
+  });
+
+  return (
+    <group ref={groupRef} dispose={null}>
+      <primitive object={scene} />
+    </group>
+  );
+};
+
 
 /**
  * REPAIRLENS - HYBRID IMPLEMENTATION
@@ -229,21 +250,12 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
   const step = isSafetyScreen ? null : repairData.steps[currentStepIndex];
   const totalSteps = repairData.steps.length;
 
-  // Scroll State for Safety Screen
-  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const safetyContentRef = useRef<HTMLDivElement>(null);
-
-  const handleSafetyScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Check if scrolled to bottom (with small buffer)
-    if (scrollHeight - scrollTop - clientHeight < 50) {
-      setHasScrolledToBottom(true);
-    }
-  };
+  // Confirmation State for Safety Screen
+  const [hasConfirmedSafety, setHasConfirmedSafety] = useState(false);
 
   // Check if we can proceed from safety screen
-  // Allow if no safety warnings, or if scrolled to bottom
-  const canProceed = !isSafetyScreen || hasScrolledToBottom || repairData.safety.length === 0;
+  // Allow if no safety warnings, or if user has confirmed
+  const canProceed = !isSafetyScreen || hasConfirmedSafety || repairData.safety.length === 0;
 
   return (
     <div className="flex flex-col h-screen bg-slate-950 animate-in fade-in duration-500">
@@ -295,18 +307,14 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
       <div className="flex-1 relative overflow-hidden bg-black group flex flex-col">
         {isSafetyScreen ? (
           // --- SAFETY SCREEN ---
-          <div
-            className="flex-1 flex flex-col items-center p-8 pt-32 animate-in slide-in-from-right overflow-y-auto scroll-smooth"
-            onScroll={handleSafetyScroll}
-            ref={safetyContentRef}
-          >
-            <div className="max-w-2xl w-full space-y-8 pb-32 px-5">
+          <div className="flex-1 flex flex-col items-center p-8 pt-32 animate-in slide-in-from-right overflow-y-auto scroll-smooth">
+            <div className="max-w-2xl w-full space-y-8 pb-8 px-5">
               <div className="text-center space-y-4">
                 <div className="inline-flex p-4 bg-red-500/10 rounded-full mb-2">
                   <AlertTriangle className="w-16 h-16 text-red-500" />
                 </div>
                 <h2 className="text-3xl font-bold text-white">SAFETY PRECAUTIONS</h2>
-                <p className="text-slate-400 text-lg">Please scroll and review these safety warnings before proceeding.</p>
+                <p className="text-slate-400 text-lg">Please review these safety warnings before proceeding.</p>
               </div>
 
               <div className="grid gap-4">
@@ -317,6 +325,32 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
                   </div>
                 ))}
               </div>
+
+              {/* Confirmation Button */}
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => setHasConfirmedSafety(true)}
+                  className={`
+                    px-8 py-4 rounded-4xl text-lg transition-all flex items-center gap-3
+                    ${hasConfirmedSafety
+                      ? 'border-2 border-dashed border-[var(--color-success)] text-[var(--color-success)] cursor-default'
+                      : 'border-2 border-dashed border-[var(--color-border-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-bg-tertiary)]/30 text-[var(--color-text-primary)] cursor-pointer'
+                    }
+                  `}
+                >
+                  {hasConfirmedSafety ? (
+                    <>
+                      <CheckCircle2 size={20} />
+                      I understand the risks
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle size={20} />
+                      I understand the risks
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -324,16 +358,32 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
           <>
             <div className="flex-1 relative">
               <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
-                {/* Placeholder for 3D view - can be enhanced with segmentation masks later */}
-                <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
-                  {/* Generic Machine Shapes */}
-                  <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" />
-                  <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
-                    <div className="w-32 h-2 bg-slate-500 rounded-full" />
+                {repairData.model_url ? (
+                  <div className="relative w-full h-full rounded-lg border border-slate-700 shadow-2xl overflow-hidden">
+                    <Canvas
+                      camera={{ position: [0, 0, 4], fov: 45 }}
+                      shadows
+                    >
+                      <color attach="background" args={['#020617']} />
+                      <ambientLight intensity={0.6} />
+                      <directionalLight position={[5, 5, 5]} intensity={3} />
+                      <Suspense fallback={null}>
+                        <ExplodedModel url={repairData.model_url} />
+                        <OrbitControls enablePan={false} enableZoom={true} />
+                      </Suspense>
+                    </Canvas>
                   </div>
-                  <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
-                  <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
-                </div>
+                ) : (
+                  <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
+                    {/* Generic Machine Shapes (fallback) */}
+                    <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" />
+                    <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
+                      <div className="w-32 h-2 bg-slate-500 rounded-full" />
+                    </div>
+                    <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
+                    <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -415,7 +465,7 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
 
             {isSafetyScreen && !canProceed && (
               <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded shadow-lg whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none">
-                Read all precautions to proceed
+                Confirm you understand the risks to proceed
               </div>
             )}
           </div>

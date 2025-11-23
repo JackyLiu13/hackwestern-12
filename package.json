@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@fal-ai/client": "^1.7.2",
     "uvicorn": "^0.0.1-security"
   }
 }
