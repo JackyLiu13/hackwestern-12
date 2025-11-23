@@ -195,9 +195,10 @@ interface GuideViewProps {
   onPrev: () => void;
   onShowTools: () => void;
   onDownloadPDF: () => void;
+  onReset: () => void;
 }
 
-const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onReset }: GuideViewProps) => {
+const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onDownloadPDF, onReset }: GuideViewProps) => {
   const step = repairData.steps[currentStepIndex];
   const totalSteps = repairData.steps.length;
 
@@ -442,7 +443,22 @@ export default function App() {
           }
           onPrev={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
           onShowTools={() => setShowTools(true)}
-          onDownloadPDF={() => generatePDF(MOCK_API_RESPONSE)}
+          onDownloadPDF={() => {
+            if (!repairData) return;
+            
+            // Map RepairResponse to RepairGuide for PDF generation
+            const guideForPDF: RepairGuide = {
+              device_name: repairData.device,
+              steps: repairData.steps.map(s => ({
+                step_number: s.step,
+                title: `Step ${s.step}`,
+                instruction: s.instruction,
+                warning: s.warning || undefined,
+              })),
+              safety: repairData.safety // Pass safety data
+            };
+            generatePDF(guideForPDF, uploadedImage);
+          }}
           onReset={() => {
             // Reset all state and go back to upload
             setCurrentView('upload');

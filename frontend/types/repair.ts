@@ -14,5 +14,6 @@ export interface RepairGuide {
   difficulty?: string;
   tools_needed?: string[];
   steps: Step[];
+  safety?: string[]; // Added safety field
 }
 
