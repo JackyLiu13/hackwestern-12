@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { repairService } from '@/lib/api/repairService';
 import type { ApiError } from '@/lib/api/types';

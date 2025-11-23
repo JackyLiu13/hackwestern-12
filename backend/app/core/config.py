@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # API Keys (Reads from .env file automatically)
     GOOGLE_API_KEY: str
+    FAL_KEY: str | None = None
     
     # External Services
     IFIXIT_API_URL: str = "https://www.ifixit.com/api/2.0"

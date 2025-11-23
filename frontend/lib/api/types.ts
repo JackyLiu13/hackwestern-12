@@ -30,6 +30,7 @@ export interface RepairResponse {
   safety: string[];
   guides_available?: iFixitGuide[] | null;
   reasoning_log: string[];
+  model_url?: string | null;
 }
 
 export interface MaskData {
