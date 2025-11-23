@@ -157,16 +157,25 @@ export const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShow
                     <>
                         <div className="flex-1 relative">
                             <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
-                                {/* Placeholder for 3D view - can be enhanced with segmentation masks later */}
-                                <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
-                                    {/* Generic Machine Shapes */}
-                                    <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" />
-                                    <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
-                                        <div className="w-32 h-2 bg-slate-500 rounded-full" />
+                                {step?.demoHtml ? (
+                                    // Render demo HTML in iframe
+                                    <iframe
+                                        src={step.demoHtml}
+                                        className="w-full h-full border-0"
+                                        title={`3D Visualization - Step ${step.step}`}
+                                    />
+                                ) : (
+                                    // Generic placeholder for non-demo steps
+                                    <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
+                                        {/* Generic Machine Shapes */}
+                                        <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" />
+                                        <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
+                                            <div className="w-32 h-2 bg-slate-500 rounded-full" />
+                                        </div>
+                                        <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
+                                        <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
                                     </div>
-                                    <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
-                                    <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
-                                </div>
+                                )}
                             </div>
                         </div>
 

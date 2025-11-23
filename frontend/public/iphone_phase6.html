@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>iPhone 15 Repair - Phase 6: Reassembly</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+            color: #333;
+        }
+
+        #instructions {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #sub-instructions {
+            font-size: 1em;
+            color: #555;
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <div id="instructions">Phase 6: Reassembly & Testing</div>
+        <div id="sub-instructions">
+            1. Clean Frame & Apply New Adhesive.<br>
+            2. Connect Screen Cables.<br>
+            3. Connect Battery (Last).<br>
+            4. <strong>TEST</strong> before closing. Does it light up?
+        </div>
+    </div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf5f5f7);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 100, 100);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50); dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Materials
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e });
+        const adhesiveMat = new THREE.MeshStandardMaterial({ color: 0x007aff, transparent: true, opacity: 0.5 }); // Blue liner
+        const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        const litScreenMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // Lit up
+
+        // Phone Body
+        const body = new THREE.Mesh(new THREE.BoxGeometry(35, 4, 70), bodyMat);
+        body.position.y = -2;
+        scene.add(body);
+
+        // Adhesive Seal (Frame)
+        const shape = new THREE.Shape();
+        shape.moveTo(-17.5, -35); shape.lineTo(17.5, -35); shape.lineTo(17.5, 35); shape.lineTo(-17.5, 35); shape.lineTo(-17.5, -35);
+        const hole = new THREE.Path();
+        hole.moveTo(-15.5, -33); hole.lineTo(15.5, -33); hole.lineTo(15.5, 33); hole.lineTo(-15.5, 33); hole.lineTo(-15.5, -33);
+        shape.holes.push(hole);
+        const adhesiveGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: false });
+        const adhesive = new THREE.Mesh(adhesiveGeo, adhesiveMat);
+        adhesive.rotation.x = Math.PI / 2; adhesive.position.y = 0.5;
+        scene.add(adhesive);
+
+        // New Screen (Hovering/Connected)
+        const screenGroup = new THREE.Group();
+        const scMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 1, 70), screenMat);
+        screenGroup.add(scMesh);
+        // Positioned as if "open book" but slightly closed for testing
+        screenGroup.position.set(-17.5, 0, 0); // Pivot left
+        scMesh.position.set(17.5, 0, 0); // Offset
+        screenGroup.rotation.z = Math.PI / 4; // 45 degrees
+        scene.add(screenGroup);
+
+        // Apple Logo (for test)
+        const logo = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 1, 32), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+        logo.rotation.x = Math.PI / 2; logo.position.set(17.5, 0.6, 0);
+        logo.visible = false;
+        screenGroup.add(logo);
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.02;
+
+            // Test Animation: Screen lights up
+            if (time > 2 && time < 4) {
+                scMesh.material = litScreenMat;
+                logo.visible = true;
+            } else if (time > 4) {
+                scMesh.material = screenMat; // Off
+                logo.visible = false;
+            } else if (time > 5) {
+                time = 0; // Loop
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    </script>
+</body>
+
+</html>
