@@ -119,26 +119,14 @@ export function generatePDF(guide: RepairGuide, deviceImage?: string | null): bo
        // Calculate centered Y position. jsPDF text baseline is approx bottom, so add correction.
        const textY = y + (boxHeight / 2) - (textBlockHeight / 2) + 5; // Adjusted offset
        
-       // Center text horizontally
-       // For each line, calculate x position
+       // We must pass the text lines.
+       // Left aligned relative to the text, but the block is vertically centered.
+       // The request asks for left alignment but vertically centered.
+       
+       // Draw text
        textLines.forEach((line: string, i: number) => {
-         // Use doc.getStringUnitWidth to get width, then scale by font size
-         const textW = doc.getStringUnitWidth(line) * 11 / doc.internal.scaleFactor * 2.8; 
-         // A simpler way in jsPDF is to use 'align: center' in text options, but we need x coordinate.
-         // Actually, let's use the align option.
-         
-         // Wait, splitTextToSize returns lines that fit width.
-         // If we want centered text, we should just use doc.text with align: center at the midpoint of the box.
+          doc.text(line, margin + 20, textY + (i * 7));
        });
-       
-       // Since we have multiple lines from splitTextToSize, standard align:center might treat the whole block.
-       // Let's retry with simple text placement.
-       
-       // Box center X
-       const boxCenterX = margin + (contentWidth / 2);
-       
-       // We must pass the text lines and use align: 'center'
-       doc.text(textLines, boxCenterX, textY, { align: 'center' });
 
        return boxHeight;
     };
