@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>IKEA SMÅGÖRA Assembly - Step 6: Final checks</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            pointer-events: none;
+            color: #333;
+        }
+
+        #instructions {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        #sub-instructions {
+            font-size: 0.9em;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <div id="instructions">Step 6: Final checks</div>
+        <div id="sub-instructions">Ensure all screws are tight. Place the mattress inside.</div>
+    </div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xe0e0e0);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(130, 100, 130);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 2.0;
+        controls.target.set(0, 35, 0);
+        controls.update();
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(50, 200, 100); dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048); scene.add(dirLight);
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ color: 0xb0b0b0, roughness: 1.0 }));
+        ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; scene.add(ground);
+
+        const whiteWoodMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.1 });
+        const rawWoodMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 0.8 });
+        const mattressMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+
+        function createEndPanel() {
+            const width = 70; const height = 75; const thickness = 2.5;
+            const shape = new THREE.Shape();
+            shape.moveTo(-width / 2, -height / 2); shape.lineTo(width / 2, -height / 2);
+            shape.lineTo(width / 2, height / 2 - 10); shape.quadraticCurveTo(0, height / 2, -width / 2, height / 2 - 10);
+            shape.lineTo(-width / 2, -height / 2);
+            const geo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+            geo.center();
+            const mesh = new THREE.Mesh(geo, whiteWoodMat); mesh.castShadow = true; return mesh;
+        }
+
+        function createSidePanelHorizontal() {
+            const group = new THREE.Group();
+            const length = 130; const height = 70; const thickness = 2.5;
+            const railGeo = new THREE.BoxGeometry(length, 5, thickness);
+            const topRail = new THREE.Mesh(railGeo, whiteWoodMat); topRail.position.y = height / 2 - 2.5; group.add(topRail);
+            const botRail = new THREE.Mesh(railGeo, whiteWoodMat); botRail.position.y = -height / 2 + 2.5; group.add(botRail);
+            const barGeo = new THREE.CylinderGeometry(0.8, 0.8, height - 10, 16);
+            for (let i = 0; i < 15; i++) {
+                const bar = new THREE.Mesh(barGeo, whiteWoodMat);
+                bar.position.x = -length / 2 + 10 + (i * (length - 20) / 14);
+                group.add(bar);
+            }
+            return group;
+        }
+
+        function createMattressBase() {
+            const group = new THREE.Group(); const length = 126; const width = 64;
+            const frameThickness = 3; const slatThickness = 1;
+            const frameSide1 = new THREE.Mesh(new THREE.BoxGeometry(length, frameThickness, frameThickness), rawWoodMat); frameSide1.position.z = width / 2 - frameThickness / 2; group.add(frameSide1);
+            const frameSide2 = frameSide1.clone(); frameSide2.position.z = -width / 2 + frameThickness / 2; group.add(frameSide2);
+            const slatGeo = new THREE.BoxGeometry(5, slatThickness, width - frameThickness * 2);
+            for (let i = 0; i < 12; i++) { const slat = new THREE.Mesh(slatGeo, rawWoodMat); slat.position.x = -length / 2 + (i + 1) * (length / 13); slat.castShadow = true; group.add(slat); }
+            return group;
+        }
+
+        function createMattress() {
+            const length = 124; const width = 62; const thickness = 10;
+            const geo = new THREE.BoxGeometry(length, thickness, width);
+            const mesh = new THREE.Mesh(geo, mattressMat);
+            mesh.castShadow = true;
+            return mesh;
+        }
+
+        // --- FINAL ASSEMBLY (Upright) ---
+
+        const end1 = createEndPanel();
+        end1.rotation.y = Math.PI / 2;
+        end1.position.set(-66.25, 37.5 + 1.25, 0);
+        scene.add(end1);
+
+        const end2 = createEndPanel();
+        end2.rotation.y = Math.PI / 2;
+        end2.position.set(66.25, 37.5 + 1.25, 0);
+        scene.add(end2);
+
+        const side1 = createSidePanelHorizontal();
+        side1.position.set(0, 35 + 1.25, -33.75);
+        scene.add(side1);
+
+        const side2 = createSidePanelHorizontal();
+        side2.position.set(0, 35 + 1.25, 33.75);
+        scene.add(side2);
+
+        const base = createMattressBase();
+        base.position.set(0, 20, 0);
+        scene.add(base);
+
+        const mattress = createMattress();
+        mattress.position.set(0, 20 + 5 + 1.5, 0);
+        mattress.scale.set(0.1, 0.1, 0.1);
+        mattress.visible = false;
+        scene.add(mattress);
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05;
+            if (time > 2) {
+                mattress.visible = true;
+                if (mattress.scale.x < 1) {
+                    mattress.scale.addScalar(0.05);
+                }
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    </script>
+</body>
+
+</html>
