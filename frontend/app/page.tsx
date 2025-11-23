@@ -232,12 +232,29 @@ interface GuideViewProps {
 }
 
 const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, onDownloadPDF, onReset }: GuideViewProps) => {
-  const step = repairData.steps[currentStepIndex];
+  // Determine current view content based on step index
+  // Index -1: Safety Screen
+  // Index 0+: Repair Steps
+  
+  const isSafetyScreen = currentStepIndex === -1;
+  const step = isSafetyScreen ? null : repairData.steps[currentStepIndex];
   const totalSteps = repairData.steps.length;
 
-  if (!step) {
-    return <div>No step data available</div>;
-  }
+  // Scroll State for Safety Screen
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const safetyContentRef = useRef<HTMLDivElement>(null);
+
+  const handleSafetyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // Check if scrolled to bottom (with small buffer)
+    if (scrollHeight - scrollTop - clientHeight < 50) {
+      setHasScrolledToBottom(true);
+    }
+  };
+
+  // Check if we can proceed from safety screen
+  // Allow if no safety warnings, or if scrolled to bottom
+  const canProceed = !isSafetyScreen || hasScrolledToBottom || repairData.safety.length === 0;
 
   return (
     <div className="flex flex-col h-screen bg-[var(--color-bg-secondary)] animate-in fade-in duration-500">
@@ -291,8 +308,23 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
               </div>
               <p className="text-[var(--color-text-tertiary)] text-sm">Placeholder for future 3D view</p>
           </div>
-        </div>
-      </div>
+        ) : (
+          // --- STEP SCREEN ---
+          <>
+            <div className="flex-1 relative">
+               <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+                 {/* Placeholder for 3D view - can be enhanced with segmentation masks later */}
+                 <div className="relative w-64 h-80 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl transform transition-all duration-700 ease-out">
+                    {/* Generic Machine Shapes */}
+                    <div className="absolute bottom-0 w-full h-24 bg-slate-700 rounded-b-lg" /> 
+                    <div className="absolute top-0 w-full h-12 bg-slate-600 rounded-t-lg flex justify-center pt-2">
+                       <div className="w-32 h-2 bg-slate-500 rounded-full" />
+                    </div>
+                    <div className="absolute top-12 left-4 w-12 h-32 bg-slate-600 rounded" />
+                    <div className="absolute top-20 right-8 w-16 h-16 rounded-full border-4 border-slate-600" />
+                 </div>
+               </div>
+            </div>
 
       {/* Instructions Panel */}
       <div className="bg-[var(--color-bg-tertiary)] border-t border-[var(--color-border-secondary)] p-6 pb-8 space-y-6 rounded-t-3xl -mt-6 relative z-10">
@@ -330,8 +362,9 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
            )}
          </div>
 
-         {/* Navigation */}
-         <div className="flex items-center justify-between pt-2">
+      {/* Navigation Footer */}
+      <div className="bg-slate-900 border-t border-slate-800 p-4 pb-8">
+         <div className="flex items-center justify-between max-w-3xl mx-auto w-full">
            <button 
              onClick={onPrev}
              disabled={currentStepIndex === 0}
@@ -341,6 +374,13 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
            </button>
            
            <div className="flex gap-1.5">
+             {/* Safety Dot */}
+             <div 
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  currentStepIndex === -1 ? 'bg-red-500' : 'bg-slate-700'
+                }`} 
+             />
+             {/* Step Dots */}
              {repairData.steps.map((_, i) => (
                <div 
                  key={i} 
@@ -490,6 +530,9 @@ export default function App() {
       setTimeout(() => {
         setIsAnalyzing(false);
         setCurrentView('guide');
+        // Start at index -1 to show safety screen first, if safety warnings exist
+        const hasSafety = response.safety && response.safety.length > 0;
+        setCurrentStepIndex(hasSafety ? -1 : 0);
       }, 1000);
 
     } catch (err: any) {
@@ -559,7 +602,7 @@ export default function App() {
               Math.min(repairData.steps.length - 1, currentStepIndex + 1)
             )
           }
-          onPrev={() => setCurrentStepIndex(Math.max(0, currentStepIndex - 1))}
+          onPrev={() => setCurrentStepIndex(Math.max(repairData.safety.length > 0 ? -1 : 0, currentStepIndex - 1))}
           onShowTools={() => setShowTools(true)}
           onDownloadPDF={() => {
             if (!repairData) return;
