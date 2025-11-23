@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { repairService } from '@/lib/api/repairService';
 import type { ApiError, RepairResponse } from '@/lib/api/types';
 import { HammerBackground } from '@/components/3d/HammerBackground';
+import { RepairGuidePopup } from '@/components/ui/RepairGuidePopup';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -37,6 +38,8 @@ interface UploadViewProps {
 
 const UploadView = ({ onImageSelect }: UploadViewProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showRepairGuide, setShowRepairGuide] = useState(false);
+  const [repairStep, setRepairStep] = useState(1);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,22 +61,38 @@ const UploadView = ({ onImageSelect }: UploadViewProps) => {
   return (
     <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)] animate-in fade-in duration-500">
       {/* 3D Hammer Background */}
-      <HammerBackground />
+      <HammerBackground
+        onPartClick={() => setShowRepairGuide(true)}
+        step={showRepairGuide ? repairStep : 0}
+      />
+
+      {/* Repair Guide Popup */}
+      {showRepairGuide && (
+        <RepairGuidePopup
+          step={repairStep}
+          onNext={() => setRepairStep(prev => prev + 1)}
+          onPrev={() => setRepairStep(prev => prev - 1)}
+          onClose={() => {
+            setShowRepairGuide(false);
+            setRepairStep(1);
+          }}
+        />
+      )}
 
       {/* Header */}
-      <header className="relative z-10 px-8 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 px-8 py-6 flex items-center justify-between pointer-events-none">
+        <div className="flex items-center gap-4 pointer-events-auto">
           <h1 className="text-4xl font-bold tracking-tight text-chrome">
             RepairLens
           </h1>
         </div>
-        <p className="text-md text-chrome">
+        <p className="text-md text-chrome pointer-events-auto">
           Upload a photo of what's broken. We'll tell you how to fix it.
         </p>
       </header>
 
       {/* Main Content - Spacer */}
-      <div className="flex-1 relative z-10"></div>
+      <div className="flex-1 relative z-10 pointer-events-none"></div>
 
       {/* Bottom Button */}
       <div className="relative z-10 pb-12 flex justify-center">
@@ -105,7 +124,7 @@ interface DiagnosisViewProps {
   onBack: () => void;
 }
 
-const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysis, onBack }: DiagnosisViewProps) => (
+const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysis, onBack, onReplaceImage }: DiagnosisViewProps & { onReplaceImage: () => void }) => (
   <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)] animate-in slide-in-from-right duration-500">
     {/* Header with Home button */}
     <header className="relative z-10 px-8 py-6 flex items-center justify-between">
@@ -131,7 +150,7 @@ const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysi
             </div>
           </div>
           <button
-            onClick={onBack}
+            onClick={onReplaceImage}
             className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full hover:bg-black/70 text-[var(--color-text-primary)] transition-colors"
             title="Replace image"
           >
@@ -177,31 +196,45 @@ const DiagnosisView = ({ image, description, onDescriptionChange, onStartAnalysi
 // 3. Analyzing View - Matches the style of your Exploded View loading state
 interface AnalyzingViewProps {
   logs: string[];
+  onHome: () => void;
 }
 
-const AnalyzingView = ({ logs }: AnalyzingViewProps) => (
-  <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#09090b]">
-    <div className="w-80 space-y-8 text-center">
-      <div className="relative w-32 h-32 mx-auto">
-        <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-[spin_3s_linear_infinite]" />
-        <div className="absolute inset-0 border-t-4 border-blue-500 rounded-full animate-[spin_1s_linear_infinite]" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Cpu className="w-10 h-10 text-blue-400 animate-pulse" />
+const AnalyzingView = ({ logs, onHome }: AnalyzingViewProps) => (
+  <div className="absolute inset-0 z-50 flex flex-col bg-[var(--color-bg-primary)]">
+    {/* Header with Home button */}
+    <header className="relative z-10 px-8 py-6 flex items-center justify-between">
+      <button
+        onClick={onHome}
+        className="p-2 hover:bg-[var(--color-bg-elevated)] rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-primary-light)] transition-colors"
+        title="Start new repair"
+      >
+        <Home size={20} />
+      </button>
+    </header>
+
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-80 space-y-8 text-center">
+        <div className="relative w-32 h-32 mx-auto">
+          <div className="absolute inset-0 border-4 border-[var(--color-primary)]/20 rounded-full animate-[spin_3s_linear_infinite]" />
+          <div className="absolute inset-0 border-t-4 border-[var(--color-primary)] rounded-full animate-[spin_1s_linear_infinite]" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Cpu className="w-10 h-10 text-[var(--color-primary-light)] animate-pulse" />
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-white">Generating Repair Guide</h3>
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-[var(--color-text-primary)]">Generating Repair Guide</h3>
 
-        {/* Log Stream */}
-        <div className="h-32 overflow-hidden relative mask-linear-fade">
-          <div className="space-y-3 flex flex-col items-center">
-            {[...logs].reverse().map((log, i) => (
-              <div key={i} className="flex items-center gap-3 text-xs animate-in slide-in-from-bottom-2 fade-in duration-300">
-                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? 'bg-blue-400 animate-pulse' : 'bg-slate-700'}`} />
-                <span className={i === 0 ? 'text-blue-200 font-medium' : 'text-slate-500'}>{log}</span>
-              </div>
-            ))}
+          {/* Log Stream */}
+          <div className="h-32 overflow-hidden relative mask-linear-fade">
+            <div className="space-y-3 flex flex-col items-center">
+              {[...logs].reverse().map((log, i) => (
+                <div key={i} className="flex items-center gap-3 text-xs animate-in slide-in-from-bottom-2 fade-in duration-300">
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? 'bg-[var(--color-primary-light)] animate-pulse' : 'bg-[var(--color-border-primary)]'}`} />
+                  <span className={i === 0 ? 'text-[var(--color-primary-pale)] font-medium' : 'text-[var(--color-text-muted)]'}>{log}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -232,6 +265,16 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
   // Scroll State for Safety Screen
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const safetyContentRef = useRef<HTMLDivElement>(null);
+
+  // Check if content is scrollable on mount/update
+  useEffect(() => {
+    if (isSafetyScreen && safetyContentRef.current) {
+      const { scrollHeight, clientHeight } = safetyContentRef.current;
+      if (scrollHeight <= clientHeight + 10) { // Small buffer
+        setHasScrolledToBottom(true);
+      }
+    }
+  }, [isSafetyScreen, repairData]);
 
   const handleSafetyScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -316,6 +359,26 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
                     <p className="text-slate-900 text-lg font-medium leading-relaxed">{warning}</p>
                   </div>
                 ))}
+              </div>
+
+              {/* Explicit Acknowledge Button */}
+              <div className="pt-8 flex justify-center">
+                <button
+                  onClick={() => {
+                    setHasScrolledToBottom(true);
+                    onNext();
+                  }}
+                  className={`
+                    px-8 py-3 rounded-full font-bold transition-all flex items-center gap-2
+                    ${hasScrolledToBottom
+                      ? 'bg-green-600 text-white hover:bg-green-500'
+                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    }
+                  `}
+                >
+                  {hasScrolledToBottom ? <CheckCircle2 size={20} /> : <Scan size={20} />}
+                  {hasScrolledToBottom ? 'Safety Reviewed' : 'I Understand the Risks'}
+                </button>
               </div>
             </div>
           </div>
@@ -429,6 +492,45 @@ const GuideView = ({ repairData, currentStepIndex, onNext, onPrev, onShowTools, 
 
 export default function App() {
   const [showTools, setShowTools] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [lightPos, setLightPos] = useState({ x: 0, y: 0 });
+  const targetPosRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      targetPosRef.current = { x: e.clientX, y: e.clientY };
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const animateLight = () => {
+      setLightPos((prev) => {
+        const dx = targetPosRef.current.x - prev.x;
+        const dy = targetPosRef.current.y - prev.y;
+
+        // Smooth easing with lag
+        return {
+          x: prev.x + dx * 0.1,
+          y: prev.y + dy * 0.1,
+        };
+      });
+
+      animationFrameId = requestAnimationFrame(animateLight);
+    };
+
+    animationFrameId = requestAnimationFrame(animateLight);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   // Use Zustand store
   const {
@@ -454,6 +556,19 @@ export default function App() {
   const handleImageSelect = (imgData: string, file: File) => {
     setUploadedImage(imgData, file);
     setCurrentView('diagnosis');
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        if (e.target?.result && typeof e.target.result === 'string') {
+          handleImageSelect(e.target.result, file);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const startAnalysis = async () => {
@@ -502,7 +617,26 @@ export default function App() {
   };
 
   return (
-    <div className="bg-[#09090b] min-h-screen text-white font-sans selection:bg-blue-500/30">
+    <div className="bg-[var(--color-bg-primary)] min-h-screen text-[var(--color-text-primary)] font-[var(--font-family-sans)] relative">
+      {/* Cursor Light Effect - Only on landing page */}
+      {currentView === 'upload' && (
+        <div
+          className="pointer-events-none fixed inset-0 z-[100] mix-blend-screen"
+          style={{
+            background: `radial-gradient(400px circle at ${lightPos.x}px ${lightPos.y}px, rgba(100, 150, 255, 0.3), transparent 60%)`,
+          }}
+        />
+      )}
+
+      {/* Hidden file input shared across views */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
       {currentView === 'upload' && (
         <UploadView onImageSelect={handleImageSelect} />
       )}
@@ -514,11 +648,21 @@ export default function App() {
           onDescriptionChange={setUserDescription}
           onStartAnalysis={startAnalysis}
           onBack={() => setCurrentView('upload')}
+          onReplaceImage={() => fileInputRef.current?.click()}
         />
       )}
 
       {currentView === 'analyzing' && (
-        <AnalyzingView logs={analysisLogs} />
+        <AnalyzingView
+          logs={analysisLogs}
+          onHome={() => {
+            setCurrentView('upload');
+            setUploadedImage(null, null);
+            setUserDescription('');
+            clearAnalysisLogs();
+            setError(null);
+          }}
+        />
       )}
 
       {currentView === 'guide' && repairData && (
@@ -534,6 +678,7 @@ export default function App() {
           onShowTools={() => setShowTools(true)}
           onDownloadPDF={() => {
             if (!repairData) return;
+
 
             // Map RepairResponse to RepairGuide for PDF generation
             const guideForPDF: RepairGuide = {
