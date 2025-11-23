@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>iPhone 15 Repair - Phase 3: Opening the Device</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+            color: #333;
+        }
+
+        #instructions {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #sub-instructions {
+            font-size: 1em;
+            color: #555;
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">
+        <div id="instructions">Phase 3: Opening the Device</div>
+        <div id="sub-instructions">
+            1. Remove bottom screws (P2).<br>
+            2. Heat edges & Apply Suction.<br>
+            3. Insert Pick & Slice Adhesive.<br>
+            4. <strong>Open like a book</strong> (Right to Left). Do not force past 90°.
+        </div>
+    </div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf5f5f7);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 100, 100);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50); dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // Materials
+        const phoneBodyMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.4, metalness: 0.6 }); // Space Black
+        const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1, metalness: 0.8 });
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.3, metalness: 0.5 });
+
+        // Phone Dimensions (Approx)
+        const width = 35; const height = 70; const depth = 4;
+
+        // Phone Body
+        const bodyGeo = new THREE.BoxGeometry(width, depth, height);
+        const bodyMesh = new THREE.Mesh(bodyGeo, phoneBodyMat);
+        bodyMesh.position.y = -depth / 2;
+        scene.add(bodyMesh);
+
+        // Screen Assembly (Pivot on Left Edge)
+        const screenGroup = new THREE.Group();
+        // Pivot point needs to be at the left edge (X = -width/2)
+        screenGroup.position.set(-width / 2, 0, 0);
+
+        const screenGeo = new THREE.BoxGeometry(width, 1, height);
+        const screenMesh = new THREE.Mesh(screenGeo, screenMat);
+        // Offset mesh so its left edge is at the group origin (0,0,0)
+        screenMesh.position.set(width / 2, 0.5, 0);
+        screenGroup.add(screenMesh);
+        scene.add(screenGroup);
+
+        // Screws (Bottom)
+        const screwGeo = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
+        const screw1 = new THREE.Mesh(screwGeo, new THREE.MeshStandardMaterial({ color: 0x888888 }));
+        screw1.rotation.x = Math.PI / 2; screw1.position.set(-5, -2, height / 2 + 1);
+        const screw2 = screw1.clone(); screw2.position.set(5, -2, height / 2 + 1);
+        scene.add(screw1); scene.add(screw2);
+
+        // Suction Cup (Visual Aid)
+        const cup = new THREE.Mesh(new THREE.SphereGeometry(5, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xdddddd, transparent: true, opacity: 0.5 }));
+        cup.position.set(0, 5, 20); cup.rotation.x = Math.PI;
+        scene.add(cup);
+
+        // Pick (Visual Aid)
+        const pick = new THREE.Mesh(new THREE.BoxGeometry(5, 0.5, 5), new THREE.MeshStandardMaterial({ color: 0x007aff }));
+        pick.position.set(width / 2 + 2, 0, 20); // Inserting on right side
+        scene.add(pick);
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.02;
+
+            // Animation Sequence
+            // 1. Screws move out
+            if (time < 2) {
+                screw1.position.z += 0.1;
+                screw2.position.z += 0.1;
+            }
+            // 2. Screen opens like a book (Rotate Z axis? No, rotate around Z axis of the group which is aligned with Y axis of world?)
+            // Group is at (-width/2, 0, 0). Axis is Z axis (along the long edge).
+            // Wait, phone is lying flat. Long edge is Z.
+            // Opening "Book" means rotating around the Z axis (Left Edge).
+            else if (time < 5) {
+                if (screenGroup.rotation.z < Math.PI / 2) { // 90 degrees
+                    screenGroup.rotation.z += 0.01;
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    </script>
+</body>
+
+</html>

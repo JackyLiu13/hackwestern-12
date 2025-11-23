@@ -110,6 +110,30 @@ export default function App() {
     clearAnalysisLogs();
     setError(null);
 
+    // Check for cached example datasets to speed up development
+    const { getDatasetKey, EXAMPLE_DATASETS } = await import('@/lib/exampleDatasets');
+    const datasetKey = getDatasetKey(userDescription);
+    if (datasetKey) {
+      const cachedData = EXAMPLE_DATASETS[datasetKey];
+      if (cachedData) {
+        setTimeout(() => {
+          addAnalysisLog("Detecting device model...");
+          setTimeout(() => addAnalysisLog("Identified: " + cachedData.device), 800);
+          setTimeout(() => addAnalysisLog("Analyzing damage..."), 1500);
+          setTimeout(() => addAnalysisLog("Retrieving repair protocol..."), 2500);
+          setTimeout(() => addAnalysisLog("Generating visualization..."), 3500);
+
+          setTimeout(() => {
+            setRepairData(cachedData);
+            setIsAnalyzing(false);
+            setCurrentView('guide');
+            setCurrentStepIndex(-1);
+          }, 5000);
+        }, 100);
+        return;
+      }
+    }
+
     try {
       // Use streaming API for real-time log updates
       const response = await repairService.analyzeStreaming(
