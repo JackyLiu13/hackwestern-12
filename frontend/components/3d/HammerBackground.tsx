@@ -485,8 +485,8 @@ export const HammerBackground: React.FC<HammerBackgroundProps> = ({
           toneMappingExposure: 1.0,
         }}
       >
-        <color attach="background" args={['#09090b']} />
-        <fog attach="fog" args={[0x09090b, 10, 30]} />
+        <color attach="background" args={['#0f1729']} />
+        <fog attach="fog" args={[0x0f1729, 10, 30]} />
 
         {/* Lighting - More colorful and intense */}
         <ambientLight intensity={0.8} color={0x6080a0} />
